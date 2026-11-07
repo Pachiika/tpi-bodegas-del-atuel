@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bodegas del Atuel - Panel de Control</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f4f9; }
+        h1 { color: #5a189a; }
+        table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #7b2cbf; color: white; }
+        button { background-color: #7b2cbf; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; }
+        button:hover { background-color: #5a189a; }
+    </style>
+</head>
+<body>
+    <h1>🍷 Bodegas del Atuel - Stock en Tiempo Real</h1>
+    <button onclick="cargarStock()">Actualizar Stock</button>
+
+    <table id="tabla-stock">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre Vino</th>
+                <th>Añada</th>
+                <th>Stock Depósito</th>
+                <th>Stock Salas</th>
+                <th>Stock Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="6">Cargando datos...</td></tr>
+        </tbody>
+    </table>
+
+    <script src="app.js"></script>
+</body>
+</html>
