@@ -9,6 +9,7 @@
 -- llamando al procedimiento, pero NO puede cambiar el estado a mano con
 -- un UPDATE (el trigger de estados de 005 no lo deja).
 -- =============================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
 -- Procesar un ingreso (RN-10)

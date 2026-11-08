@@ -10,6 +10,7 @@
 --   BEFORE: corre antes de guardar, puede cambiar NEW o cancelar con un error
 --   AFTER:  corre despues de guardar
 -- =============================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
 -- ---------------------------------------------

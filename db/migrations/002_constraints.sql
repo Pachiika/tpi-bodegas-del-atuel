@@ -4,6 +4,7 @@
 -- A cada restriccion le ponemos nombre para que el
 -- mensaje de error diga cual fue la que fallo.
 -- =============================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
 -- ---------- UNIQUE (valores que no se pueden repetir) ----------

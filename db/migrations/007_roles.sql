@@ -14,6 +14,7 @@
 --   * en la nube, db/nube/aplicar_migraciones.sh (o ALTER ROLE ... PASSWORD);
 --     (ver docs/08_nube.md).
 -- =====================================================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 -- Crear los roles solo si no existen (PostgreSQL no tiene CREATE ROLE IF NOT EXISTS).
 DO $$

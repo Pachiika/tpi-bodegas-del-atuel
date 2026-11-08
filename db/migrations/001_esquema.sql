@@ -4,6 +4,7 @@
 -- primarias y foraneas (segun el modelo del grupo).
 -- Las restricciones UNIQUE, CHECK y DEFAULT estan en 002_constraints.sql
 -- =============================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
 -- ---------- Tipo ENUM ----------

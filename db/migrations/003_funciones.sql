@@ -2,6 +2,7 @@
 -- 003_funciones.sql
 -- Funciones que despues usan los triggers, las consultas y la API.
 -- =============================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
 -- Descuento segun el tipo de cliente (RN-06)

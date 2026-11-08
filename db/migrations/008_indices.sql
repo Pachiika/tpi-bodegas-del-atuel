@@ -7,6 +7,7 @@
 -- PostgreSQL crea índices automáticamente solo para PRIMARY KEY y
 -- UNIQUE. Las claves foráneas NO se indexan solas.
 -- =====================================================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 -- ---------------------------------------------------------------------
 -- 1. Índice sobre clave foránea: comprobante(id_cliente)

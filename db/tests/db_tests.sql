@@ -15,6 +15,7 @@
 -- * Al final se imprime un resumen. Si alguna prueba no da el resultado
 --   esperado, el script termina con ERROR.
 -- =====================================================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 \set ON_ERROR_STOP on
 \echo '=== Pruebas de reglas de negocio - Bodegas del Atuel ==='
 

@@ -2,6 +2,7 @@
 -- 006_vistas.sql  ·  Bodegas del Atuel
 -- Vistas del sistema (3 comunes + 1 materializada).
 -- =====================================================================
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 -- ---------------------------------------------------------------------
 -- V1 · Stock total por vino = depósito central + suma de todas las salas.
