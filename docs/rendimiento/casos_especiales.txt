@@ -1,0 +1,54 @@
+BEGIN
+CREATE INDEX
+ANALYZE
+ tipo_cliente | count 
+--------------+-------
+ socio        | 14996
+ distribuidor |  3455
+ exportador   |  1549
+(3 rows)
+
+                            QUERY PLAN                             
+-------------------------------------------------------------------
+ Seq Scan on cliente (actual time=0.005..1.931 rows=14996 loops=1)
+   Filter: (tipo_cliente = 'socio'::tipo_cliente)
+   Rows Removed by Filter: 5004
+ Planning Time: 0.069 ms
+ Execution Time: 2.501 ms
+(5 rows)
+
+ tamanio_indice_descartado 
+---------------------------
+ 152 kB
+(1 row)
+
+ROLLBACK
+                          QUERY PLAN                          
+--------------------------------------------------------------
+ Seq Scan on vino (actual time=0.037..0.266 rows=129 loops=1)
+   Filter: (lower((nombre)::text) ~~ '%reserva%'::text)
+   Rows Removed by Filter: 471
+ Planning Time: 0.216 ms
+ Execution Time: 0.278 ms
+(5 rows)
+
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Seq Scan on vino (actual time=0.003..0.036 rows=34 loops=1)
+   Filter: ((nombre)::text ~~ 'Malbec%'::text)
+   Rows Removed by Filter: 566
+ Planning Time: 0.064 ms
+ Execution Time: 0.041 ms
+(5 rows)
+
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on vino (actual time=0.013..0.030 rows=34 loops=1)
+   Filter: (lower((nombre)::text) ~~ 'malbec%'::text)
+   Heap Blocks: exact=7
+   ->  Bitmap Index Scan on idx_vino_nombre_lower (actual time=0.006..0.006 rows=34 loops=1)
+         Index Cond: ((lower((nombre)::text) ~>=~ 'malbec'::text) AND (lower((nombre)::text) ~<~ 'malbed'::text))
+ Planning Time: 0.096 ms
+ Execution Time: 0.038 ms
+(7 rows)
+

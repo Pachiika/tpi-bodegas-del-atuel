@@ -1,0 +1,27 @@
+Timing is on.
+psql:docs/rendimiento/costo_escritura.sql:5: NOTICE:  table "pr_sin_idx" does not exist, skipping
+psql:docs/rendimiento/costo_escritura.sql:5: NOTICE:  table "pr_con_idx" does not exist, skipping
+Time: 0.232 ms
+Time: 6.631 ms
+Time: 1.302 ms
+Time: 1.670 ms
+Time: 0.864 ms
+Time: 0.823 ms
+--- COPY sin indices secundarios
+COPY 517840
+Time: 1267.404 ms (00:01.267)
+--- COPY con 2 indices secundarios
+COPY 517840
+Time: 3394.945 ms (00:03.395)
+--- UPDATE de 50.000 filas en cada tabla
+UPDATE 51844
+Time: 245.444 ms
+UPDATE 51844
+Time: 571.437 ms
+Timing is off.
+  relname   | tamanio_total | tamanio_indices 
+------------+---------------+-----------------
+ pr_sin_idx | 48 MB         | 12 MB
+ pr_con_idx | 80 MB         | 44 MB
+(2 rows)
+

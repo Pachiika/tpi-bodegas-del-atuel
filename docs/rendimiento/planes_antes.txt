@@ -1,0 +1,198 @@
+ANALYZE
+################ Q1 = S3: clientes por tipo que compraron en una sala la última semana
+                                                          QUERY PLAN                                                          
+------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate (actual time=20.264..20.975 rows=3 loops=1)
+   Group Key: t.tipo
+   Buffers: shared hit=1596
+   ->  Sort (actual time=18.326..19.373 rows=20000 loops=1)
+         Sort Key: t.tipo, c.id_cliente
+         Sort Method: quicksort  Memory: 1394kB
+         Buffers: shared hit=1596
+         ->  Hash Right Join (actual time=8.745..15.910 rows=20000 loops=1)
+               Hash Cond: (cl.tipo_cliente = t.tipo)
+               Buffers: shared hit=1596
+               ->  Merge Left Join (actual time=8.714..12.771 rows=20000 loops=1)
+                     Merge Cond: (cl.id_cliente = c.id_cliente)
+                     Buffers: shared hit=1594
+                     ->  Index Only Scan using uq_cliente_id_tipo on cliente cl (actual time=0.009..1.878 rows=20000 loops=1)
+                           Heap Fetches: 81
+                           Buffers: shared hit=58
+                     ->  Sort (actual time=8.701..8.776 rows=12 loops=1)
+                           Sort Key: c.id_cliente
+                           Sort Method: quicksort  Memory: 25kB
+                           Buffers: shared hit=1536
+                           ->  Gather (actual time=8.515..8.769 rows=12 loops=1)
+                                 Workers Planned: 1
+                                 Workers Launched: 1
+                                 Buffers: shared hit=1536
+                                 ->  Parallel Seq Scan on comprobante c (actual time=4.189..4.205 rows=6 loops=2)
+                                       Filter: ((id_sala = 1) AND (fecha >= (CURRENT_DATE - '7 days'::interval)))
+                                       Rows Removed by Filter: 74994
+                                       Buffers: shared hit=1536
+               ->  Hash (actual time=0.014..0.015 rows=3 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                     Buffers: shared hit=2
+                     ->  Function Scan on unnest t (actual time=0.010..0.011 rows=3 loops=1)
+                           Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=65
+ Planning Time: 0.457 ms
+ Execution Time: 21.018 ms
+(37 rows)
+
+################ Q2 = S8: monto de ventas por sala en el último trimestre
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Sort (actual time=14.834..17.523 rows=40 loops=1)
+   Sort Key: (sum((c.total)::numeric)) DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=1548
+   ->  Finalize GroupAggregate (actual time=14.743..17.503 rows=40 loops=1)
+         Group Key: s.id_sala
+         Buffers: shared hit=1548
+         ->  Gather Merge (actual time=14.732..17.451 rows=80 loops=1)
+               Workers Planned: 1
+               Workers Launched: 1
+               Buffers: shared hit=1548
+               ->  Sort (actual time=12.807..12.812 rows=40 loops=2)
+                     Sort Key: s.id_sala
+                     Sort Method: quicksort  Memory: 28kB
+                     Buffers: shared hit=1548
+                     Worker 0:  Sort Method: quicksort  Memory: 28kB
+                     ->  Partial HashAggregate (actual time=12.772..12.786 rows=40 loops=2)
+                           Group Key: s.id_sala
+                           Batches: 1  Memory Usage: 32kB
+                           Buffers: shared hit=1541
+                           Worker 0:  Batches: 1  Memory Usage: 32kB
+                           ->  Hash Join (actual time=6.566..10.400 rows=9886 loops=2)
+                                 Hash Cond: (c.id_sala = s.id_sala)
+                                 Buffers: shared hit=1541
+                                 ->  Parallel Seq Scan on comprobante c (actual time=6.470..8.223 rows=9886 loops=2)
+                                       Filter: (fecha >= (CURRENT_DATE - '3 mons'::interval))
+                                       Rows Removed by Filter: 65114
+                                       Buffers: shared hit=1536
+                                 ->  Hash (actual time=0.039..0.040 rows=40 loops=2)
+                                       Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                       Buffers: shared hit=2
+                                       ->  Seq Scan on sala_venta s (actual time=0.019..0.024 rows=40 loops=2)
+                                             Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=44
+ Planning Time: 0.246 ms
+ Execution Time: 17.570 ms
+(37 rows)
+
+################ Q3 = S12 a): clientes que compraron todos los vinos de una bodega (NOT EXISTS)
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Anti Join (actual time=8426.127..99059.431 rows=13 loops=1)
+   Join Filter: (NOT (SubPlan 1))
+   Rows Removed by Join Filter: 685
+   Buffers: shared hit=31796378
+   ->  Seq Scan on cliente cl (actual time=0.012..9.955 rows=20000 loops=1)
+         Buffers: shared hit=256
+   ->  Materialize (actual time=0.012..0.012 rows=1 loops=20000)
+         Buffers: shared hit=9
+         ->  Hash Join (actual time=232.953..233.103 rows=3 loops=1)
+               Hash Cond: ((v.cuit_bodega)::bpchar = (b.cuit)::bpchar)
+               Buffers: shared hit=9
+               ->  Seq Scan on vino v (actual time=0.007..0.057 rows=600 loops=1)
+                     Buffers: shared hit=8
+               ->  Hash (actual time=232.928..232.930 rows=1 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                     Buffers: shared hit=1
+                     ->  Seq Scan on bodega b (actual time=232.913..232.916 rows=1 loops=1)
+                           Filter: ((razon_social)::text = 'Bodega Salto de las Rosas S.A.'::text)
+                           Rows Removed by Filter: 11
+                           Buffers: shared hit=1
+   SubPlan 1
+     ->  Nested Loop (actual time=4.777..4.777 rows=0 loops=20672)
+           Buffers: shared hit=31796113
+           ->  Seq Scan on comprobante c (actual time=1.446..4.739 rows=7 loops=20672)
+                 Filter: (id_cliente = cl.id_cliente)
+                 Rows Removed by Filter: 148024
+                 Buffers: shared hit=31334964
+           ->  Index Only Scan using renglon_comprobante_pkey on renglon_comprobante rc (actual time=0.004..0.004 rows=0 loops=153716)
+                 Index Cond: ((nro_comprobante = c.nro_comprobante) AND (cod_vino = v.cod_vino))
+                 Heap Fetches: 0
+                 Buffers: shared hit=461149
+ Planning:
+   Buffers: shared hit=144
+ Planning Time: 0.761 ms
+ Execution Time: 99078.966 ms
+(35 rows)
+
+################ Q4 = S12 b): clientes que nunca compraron vino tinto (anti-join)
+                                                 QUERY PLAN                                                 
+------------------------------------------------------------------------------------------------------------
+ Aggregate (actual time=239.792..239.800 rows=1 loops=1)
+   Buffers: shared hit=5960
+   ->  Hash Right Anti Join (actual time=239.317..239.754 rows=581 loops=1)
+         Hash Cond: (c.id_cliente = cl.id_cliente)
+         Buffers: shared hit=5960
+         ->  Hash Join (actual time=42.744..199.510 rows=255436 loops=1)
+               Hash Cond: (rc.nro_comprobante = c.nro_comprobante)
+               Buffers: shared hit=5704
+               ->  Hash Join (actual time=0.115..98.536 rows=255436 loops=1)
+                     Hash Cond: (rc.cod_vino = v.cod_vino)
+                     Buffers: shared hit=4168
+                     ->  Seq Scan on renglon_comprobante rc (actual time=0.008..34.597 rows=517840 loops=1)
+                           Buffers: shared hit=4160
+                     ->  Hash (actual time=0.099..0.100 rows=302 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 19kB
+                           Buffers: shared hit=8
+                           ->  Seq Scan on vino v (actual time=0.007..0.063 rows=302 loops=1)
+                                 Filter: (tipo = 'tinto'::tipo_vino)
+                                 Rows Removed by Filter: 298
+                                 Buffers: shared hit=8
+               ->  Hash (actual time=41.569..41.570 rows=150000 loops=1)
+                     Buckets: 262144  Batches: 1  Memory Usage: 7908kB
+                     Buffers: shared hit=1536
+                     ->  Seq Scan on comprobante c (actual time=0.004..13.913 rows=150000 loops=1)
+                           Buffers: shared hit=1536
+         ->  Hash (actual time=3.683..3.684 rows=20000 loops=1)
+               Buckets: 32768  Batches: 1  Memory Usage: 960kB
+               Buffers: shared hit=256
+               ->  Seq Scan on cliente cl (actual time=0.004..1.595 rows=20000 loops=1)
+                     Buffers: shared hit=256
+ Planning:
+   Buffers: shared hit=38
+ Planning Time: 0.478 ms
+ Execution Time: 239.871 ms
+(34 rows)
+
+################ Q5 = Historial de compras de un cliente (endpoint GET /clientes/{id})
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Sort (actual time=7.837..7.839 rows=10 loops=1)
+   Sort Key: fecha DESC
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=1536
+   ->  Seq Scan on comprobante c (actual time=4.109..7.822 rows=10 loops=1)
+         Filter: (id_cliente = 1638)
+         Rows Removed by Filter: 149990
+         Buffers: shared hit=1536
+ Planning:
+   Buffers: shared hit=11
+ Planning Time: 0.085 ms
+ Execution Time: 7.856 ms
+(12 rows)
+
+################ Q6 = Transferencias pendientes de una sala (pantalla de transferencias)
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Sort (actual time=0.186..0.186 rows=2 loops=1)
+   Sort Key: fecha_confeccion
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=17
+   ->  Seq Scan on transferencia (actual time=0.075..0.181 rows=2 loops=1)
+         Filter: ((estado <> 'procesado'::estado_documento) AND (id_sala = 4))
+         Rows Removed by Filter: 2998
+         Buffers: shared hit=17
+ Planning:
+   Buffers: shared hit=21
+ Planning Time: 0.106 ms
+ Execution Time: 0.196 ms
+(12 rows)
+
