@@ -65,7 +65,7 @@ GRANT EXECUTE ON FUNCTION fn_stock_sala(INTEGER, INTEGER),
                           fn_total_comprobante(INTEGER),
                           fn_subtotal_bruto_comprobante(INTEGER),
                           fn_descuento_cliente(INTEGER),
-                          fn_descuento_por_tipo(tipo_cliente),
+                          fn_descuento_por_tipo(VARCHAR),
                           fn_antiguedad_anios(DATE),
                           fn_subtotal_renglon(INTEGER, NUMERIC, NUMERIC)
       TO app_ro;

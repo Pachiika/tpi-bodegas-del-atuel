@@ -1,111 +1,124 @@
--- =====================================================================
--- 003_funciones.sql  ·  Bodegas del Atuel
--- Funciones reutilizables. Cada una indica propósito, parámetros y
--- volatilidad:
---   IMMUTABLE: mismo resultado para los mismos argumentos, siempre.
---   STABLE:    no modifica la base y devuelve lo mismo dentro de una
---              misma sentencia (puede leer tablas o la fecha actual).
--- =====================================================================
+-- =============================================
+-- 003_funciones.sql
+-- Funciones que despues usan los triggers, las consultas y la API.
+-- =============================================
 
--- ---------------------------------------------------------------------
--- fn_descuento_por_tipo(tipo) -> NUMERIC         (RN-06)
--- Descuento por defecto según el tipo de cliente:
---   socio 10 %, distribuidor 20 %, exportador 30 %.
--- IMMUTABLE: depende solo del argumento.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_descuento_por_tipo(p_tipo tipo_cliente)
-RETURNS NUMERIC
-LANGUAGE sql IMMUTABLE AS $$
-    SELECT CASE p_tipo
-               WHEN 'socio'        THEN 10.00
-               WHEN 'distribuidor' THEN 20.00
-               WHEN 'exportador'   THEN 30.00
-           END;
-$$;
 
--- ---------------------------------------------------------------------
--- fn_descuento_cliente(id_cliente) -> NUMERIC     (RN-06)
--- Porcentaje de descuento vigente de un cliente (normalmente el de su
--- tipo; puede haberse ajustado, por ejemplo con la consulta U6).
--- Si el cliente no existe lanza una excepción.
--- STABLE: lee la tabla cliente.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_descuento_cliente(p_id_cliente INTEGER)
+-- Descuento segun el tipo de cliente (RN-06)
+-- socio = 10%, distribuidor = 20%, exportador = 30%
+-- Ejemplo: SELECT fn_descuento_por_tipo('socio');  --> 10
+CREATE OR REPLACE FUNCTION fn_descuento_por_tipo(tipo VARCHAR)
 RETURNS NUMERIC
-LANGUAGE plpgsql STABLE AS $$
-DECLARE
-    v_desc NUMERIC;
+AS $$
 BEGIN
-    SELECT descuento INTO v_desc FROM cliente WHERE id_cliente = p_id_cliente;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'El cliente % no existe', p_id_cliente
-            USING ERRCODE = 'P0001';
+    IF tipo = 'socio' THEN
+        RETURN 10;
+    ELSIF tipo = 'distribuidor' THEN
+        RETURN 20;
+    ELSE
+        RETURN 30;   -- exportador
     END IF;
-    RETURN v_desc;
 END;
-$$;
+$$ LANGUAGE plpgsql;
 
--- ---------------------------------------------------------------------
--- fn_stock_sala(id_sala, cod_vino) -> INTEGER     (RN-09)
--- Stock disponible de un vino en una sala (0 si no hay fila).
--- STABLE: lee stock_sala.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_stock_sala(p_sala INTEGER, p_vino INTEGER)
+
+-- Descuento que tiene guardado un cliente (RN-06)
+-- Si el cliente no existe, da error.
+-- (el parametro no se llama "cliente" porque se confundiria con la tabla)
+-- Ejemplo: SELECT fn_descuento_cliente(1);
+CREATE OR REPLACE FUNCTION fn_descuento_cliente(id_buscado INTEGER)
+RETURNS NUMERIC
+AS $$
+DECLARE
+    desc_cliente NUMERIC;
+BEGIN
+    SELECT descuento INTO desc_cliente
+    FROM cliente
+    WHERE id_cliente = id_buscado;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El cliente % no existe', id_buscado;
+    END IF;
+
+    RETURN desc_cliente;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Cuantas botellas hay de un vino en una sala (RN-09)
+-- Si no hay ninguna fila de stock, devuelve 0.
+-- Ejemplo: SELECT fn_stock_sala(1, 5);
+CREATE OR REPLACE FUNCTION fn_stock_sala(sala INTEGER, vino INTEGER)
 RETURNS INTEGER
-LANGUAGE sql STABLE AS $$
-    SELECT COALESCE(
-        (SELECT cantidad FROM stock_sala
-          WHERE id_sala = p_sala AND cod_vino = p_vino), 0);
-$$;
+AS $$
+DECLARE
+    stock_actual INTEGER;
+BEGIN
+    SELECT cantidad INTO stock_actual
+    FROM stock_sala
+    WHERE id_sala = sala AND cod_vino = vino;
 
--- ---------------------------------------------------------------------
--- fn_subtotal_renglon(cantidad, precio, descuento_pct) -> NUMERIC (RN-08)
--- Subtotal de un renglón con el descuento aplicado, redondeado a 2
--- decimales. IMMUTABLE: es un cálculo puro.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_subtotal_renglon(p_cantidad INTEGER,
-                                               p_precio NUMERIC,
-                                               p_descuento NUMERIC)
+    IF stock_actual IS NULL THEN
+        RETURN 0;
+    END IF;
+
+    RETURN stock_actual;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Subtotal de un renglon: cantidad * precio, menos el descuento (RN-08)
+-- Se redondea a 2 decimales.
+-- Ejemplo: SELECT fn_subtotal_renglon(2, 10000, 20);  --> 16000.00
+CREATE OR REPLACE FUNCTION fn_subtotal_renglon(cantidad INTEGER, precio NUMERIC, descuento NUMERIC)
 RETURNS NUMERIC
-LANGUAGE sql IMMUTABLE AS $$
-    SELECT ROUND(p_cantidad * p_precio * (1 - p_descuento / 100.0), 2);
-$$;
+AS $$
+BEGIN
+    RETURN ROUND(cantidad * precio * (1 - descuento / 100.0), 2);
+END;
+$$ LANGUAGE plpgsql;
 
--- ---------------------------------------------------------------------
--- fn_total_comprobante(nro) -> NUMERIC            (RN-08)
--- Total de un comprobante = suma de los subtotales de sus renglones
--- (cada uno ya tiene el descuento aplicado). 0 si no tiene renglones.
--- STABLE: lee renglon_comprobante.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_total_comprobante(p_nro INTEGER)
+
+-- Total de un comprobante: suma de los subtotales de sus renglones (RN-08)
+-- Si no tiene renglones devuelve 0.
+CREATE OR REPLACE FUNCTION fn_total_comprobante(numero INTEGER)
 RETURNS NUMERIC
-LANGUAGE sql STABLE AS $$
-    SELECT COALESCE(SUM(subtotal), 0)
-      FROM renglon_comprobante
-     WHERE nro_comprobante = p_nro;
-$$;
+AS $$
+DECLARE
+    total NUMERIC;
+BEGIN
+    SELECT SUM(subtotal) INTO total
+    FROM renglon_comprobante
+    WHERE nro_comprobante = numero;
 
--- ---------------------------------------------------------------------
--- fn_subtotal_bruto_comprobante(nro) -> NUMERIC   (RN-08)
--- Suma de cantidad * precio unitario, sin descuento.
--- STABLE: lee renglon_comprobante.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_subtotal_bruto_comprobante(p_nro INTEGER)
+    RETURN COALESCE(total, 0);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Subtotal SIN descuento de un comprobante: suma de cantidad * precio (RN-08)
+CREATE OR REPLACE FUNCTION fn_subtotal_bruto_comprobante(numero INTEGER)
 RETURNS NUMERIC
-LANGUAGE sql STABLE AS $$
-    SELECT COALESCE(SUM(ROUND(cantidad * precio_unitario, 2)), 0)
-      FROM renglon_comprobante
-     WHERE nro_comprobante = p_nro;
-$$;
+AS $$
+DECLARE
+    bruto NUMERIC;
+BEGIN
+    SELECT SUM(ROUND(cantidad * precio_unitario, 2)) INTO bruto
+    FROM renglon_comprobante
+    WHERE nro_comprobante = numero;
 
--- ---------------------------------------------------------------------
--- fn_antiguedad_anios(fecha) -> INTEGER
--- Años completos transcurridos desde una fecha hasta hoy (se usa para la
--- antigüedad de empleados, clientes y comprobantes: U2, D1, D3, D4).
--- STABLE (no IMMUTABLE) porque depende de CURRENT_DATE.
--- ---------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_antiguedad_anios(p_fecha DATE)
+    RETURN COALESCE(bruto, 0);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Cuantos años pasaron desde una fecha hasta hoy
+-- Se usa para la antiguedad de empleados y clientes (consultas U2, D1, D3, D4).
+-- Ejemplo: SELECT fn_antiguedad_anios('2020-03-15');
+CREATE OR REPLACE FUNCTION fn_antiguedad_anios(fecha DATE)
 RETURNS INTEGER
-LANGUAGE sql STABLE AS $$
-    SELECT EXTRACT(YEAR FROM age(CURRENT_DATE, p_fecha))::INTEGER;
-$$;
+AS $$
+BEGIN
+    RETURN EXTRACT(YEAR FROM age(CURRENT_DATE, fecha));
+END;
+$$ LANGUAGE plpgsql;

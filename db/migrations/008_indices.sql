@@ -14,7 +14,7 @@
 -- comprobantes. Lo usan S12 a) y b) (NOT EXISTS correlacionado por
 -- cliente), D4/D6 (clientes sin compras), el historial del cliente en la
 -- API y la verificación de la FK al borrar un cliente.
--- Medido: S12 a) pasó de ~99 s a ~0,6 s (ver informe).
+-- Medido: S12 a) pasó de ~70 s a ~0,5 s (ver informe).
 -- ---------------------------------------------------------------------
 CREATE INDEX idx_comprobante_cliente
     ON comprobante (id_cliente);
@@ -74,7 +74,7 @@ CREATE INDEX idx_ingreso_transportista    ON ingreso (codigo_transporte, fecha);
 CREATE INDEX idx_renglon_transf_vino      ON renglon_transferencia (cod_vino);
 CREATE INDEX idx_renglon_ingreso_vino     ON renglon_ingreso (cod_vino);
 CREATE INDEX idx_stock_sala_vino          ON stock_sala (cod_vino);
-CREATE INDEX idx_lote_bodega              ON lote_uva (cuit_bodega);
+CREATE INDEX idx_lote_bodega              ON lote_uva (cuit_bodega_destino);
 
 -- ---------------------------------------------------------------------
 -- 7. Índice de EXPRESIÓN: búsqueda de vinos por nombre sin distinguir
