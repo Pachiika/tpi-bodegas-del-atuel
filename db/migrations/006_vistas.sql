@@ -48,7 +48,7 @@ COMMENT ON VIEW vw_ventas_mensuales_sala IS 'Monto vendido y cantidad de comprob
 CREATE OR REPLACE VIEW vw_documentos_pendientes AS
 SELECT 'ingreso'::text     AS tipo_documento,
        i.codigo_ingreso    AS numero,
-       i.estado,
+       i.estado::text      AS estado,      -- se pasa a texto porque ingreso y transferencia tienen ENUM distintos
        i.fecha,
        NULL::integer       AS id_sala,
        (SELECT COALESCE(SUM(cantidad), 0) FROM renglon_ingreso r
@@ -58,7 +58,7 @@ SELECT 'ingreso'::text     AS tipo_documento,
 UNION ALL
 SELECT 'transferencia'::text,
        t.nro_transferencia,
-       t.estado,
+       t.estado::text,
        t.fecha_confeccion,
        t.id_sala,
        (SELECT COALESCE(SUM(cantidad), 0) FROM renglon_transferencia r

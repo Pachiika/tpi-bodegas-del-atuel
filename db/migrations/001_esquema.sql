@@ -10,7 +10,8 @@ SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tam
 -- ---------- Tipo ENUM ----------
 -- El estado de ingresos y transferencias solo puede tomar estos 3 valores.
 -- (El enunciado pide que el estado sea un tipo ENUM.)
-CREATE TYPE estado_documento AS ENUM ('en_confeccion', 'terminado', 'procesado');
+CREATE TYPE estado_ingreso AS ENUM ('en_confeccion', 'terminado', 'procesado');
+CREATE TYPE estado_transferencia AS ENUM ('en_confeccion', 'terminado', 'procesado');
 
 
 -- ---------- Dominios ----------
@@ -62,7 +63,7 @@ CREATE TABLE empleado (
 CREATE TABLE cepa (
     id_cepa SERIAL PRIMARY KEY,
     nombre  VARCHAR(50) NOT NULL,
-    tipo    VARCHAR(20) NOT NULL                -- tinta o blanca
+    tipo    VARCHAR(50) NOT NULL                -- tinta o blanca
 );
 
 CREATE TABLE finca (
@@ -256,7 +257,7 @@ CREATE TABLE transportista_cubre_localidad (
 CREATE TABLE ingreso (
     codigo_ingreso    SERIAL PRIMARY KEY,
     fecha             TIMESTAMP NOT NULL,
-    estado            estado_documento NOT NULL,
+    estado            estado_ingreso NOT NULL,
     codigo_transporte INT NOT NULL
         REFERENCES transportista (codigo_transporte) ON DELETE RESTRICT ON UPDATE CASCADE,  -- RN-14
     cuit_bodega       cuit_dom NOT NULL
@@ -277,7 +278,7 @@ CREATE TABLE transferencia (
     id_sala           INT NOT NULL
         REFERENCES sala_venta (id_sala) ON DELETE RESTRICT ON UPDATE CASCADE,
     fecha_confeccion  TIMESTAMP NOT NULL,
-    estado            estado_documento NOT NULL
+    estado            estado_transferencia NOT NULL
 );
 
 CREATE TABLE renglon_transferencia (

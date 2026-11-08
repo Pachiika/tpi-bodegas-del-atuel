@@ -371,7 +371,7 @@ RETURNS trigger
 AS $$
 DECLARE
     codigo INTEGER;
-    estado_actual estado_documento;
+    estado_actual estado_ingreso;
 BEGIN
     IF TG_OP = 'DELETE' THEN
         codigo := OLD.codigo_ingreso;
@@ -418,7 +418,7 @@ RETURNS trigger
 AS $$
 DECLARE
     numero INTEGER;
-    estado_actual estado_documento;
+    estado_actual estado_transferencia;
 BEGIN
     IF TG_OP = 'DELETE' THEN
         numero := OLD.nro_transferencia;

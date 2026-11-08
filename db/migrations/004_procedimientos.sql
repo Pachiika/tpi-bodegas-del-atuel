@@ -20,7 +20,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    estado_actual estado_documento;
+    estado_actual estado_ingreso;
     cant_renglones INTEGER;
     r RECORD;
 BEGIN
@@ -84,7 +84,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    estado_actual estado_documento;
+    estado_actual estado_transferencia;
     sala INTEGER;
     cant_renglones INTEGER;
     disponible INTEGER;
