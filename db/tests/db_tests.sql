@@ -45,7 +45,7 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
         INSERT INTO resultado_prueba (regla, caso, esperado, ok, detalle)
         VALUES (p_regla, p_caso, 'falla',
-                position(lower(p_fragmento) IN lower(SQLERRM)) > 0,
+                position(lower(p_fragmento) IN lower(SQLSTATE || ': ' || SQLERRM)) > 0,
                 SQLSTATE || ': ' || SQLERRM);
     END;
 END;
@@ -118,7 +118,7 @@ SELECT pg_temp.debe_fallar(
 -- =====================================================================
 SELECT pg_temp.debe_fallar(
     $q$INSERT INTO sala_venta (calle, numero, dia_cierre, cp_localidad) VALUES ('X', '1', 'lunes', 'NOEXISTE')$q$,
-    'RN-02', 'foreign key', 'Sala con localidad inexistente rechazada por FK') \gset
+    'RN-02', '23503', 'Sala con localidad inexistente rechazada por FK') \gset
 SELECT pg_temp.debe_fallar(
     $q$INSERT INTO sala_venta (calle, numero, dia_cierre, cp_localidad) VALUES ('X', '1', 'lunes', NULL)$q$,
     'RN-02', 'null', 'Sala sin localidad rechazada por NOT NULL') \gset
@@ -134,7 +134,7 @@ SELECT pg_temp.debe_fallar(
     'RN-03', 'null', 'Empleado sin sala rechazado por NOT NULL') \gset
 SELECT pg_temp.debe_fallar(
     $q$INSERT INTO empleado VALUES ('20999999993', 'Sala falsa', '2020-01-01', 400000, 123456789)$q$,
-    'RN-03', 'foreign key', 'Empleado con sala inexistente rechazado por FK') \gset
+    'RN-03', '23503', 'Empleado con sala inexistente rechazado por FK') \gset
 SELECT pg_temp.debe_fallar(
     $q$INSERT INTO empleado VALUES ('209999', 'CUIT corto', '2020-01-01', 400000, 90001)$q$,
     'RN-03', 'cuit_dom', 'CUIT mal formado rechazado por el DOMAIN cuit_dom') \gset
@@ -208,7 +208,7 @@ SELECT pg_temp.debe_fallar(
 SELECT pg_temp.debe_fallar(
     $q$INSERT INTO cliente (nombre_o_razon_social, tipo_doc, nro_doc, direccion, cp_localidad, tipo_cliente)
        VALUES ('Tipo raro', 'DNI', '99000099', 'Dir', 'T9999', 'mayorista')$q$,
-    'RN-06', 'check constraint', 'Tipo de cliente que no existe rechazado por CHECK') \gset
+    'RN-06', '23514', 'Tipo de cliente que no existe rechazado por CHECK') \gset
 
 -- =====================================================================
 -- RN-07 · Permisos de exportación con vencimiento posterior a emisión
@@ -389,13 +389,13 @@ SELECT pg_temp.verificar(
 -- =====================================================================
 SELECT pg_temp.debe_fallar(
     $q$DELETE FROM transportista WHERE codigo_transporte = 90001$q$,
-    'RN-14', 'foreign key', 'Transportista con ingresos no se puede borrar (RESTRICT)') \gset
+    'RN-14', '_fkey', 'Transportista con ingresos no se puede borrar (RESTRICT)') \gset
 SELECT pg_temp.debe_fallar(
     $q$DELETE FROM bodega WHERE cuit = '30999999991'$q$,
-    'RN-14', 'foreign key', 'Bodega con vinos e ingresos no se puede borrar (RESTRICT)') \gset
+    'RN-14', '_fkey', 'Bodega con vinos e ingresos no se puede borrar (RESTRICT)') \gset
 SELECT pg_temp.debe_fallar(
     $q$DELETE FROM vino WHERE cod_vino = 90001$q$,
-    'RN-14', 'foreign key', 'Vino con ventas y stock no se puede borrar (RESTRICT)') \gset
+    'RN-14', '_fkey', 'Vino con ventas y stock no se puede borrar (RESTRICT)') \gset
 SELECT pg_temp.debe_funcionar(
     $q$DELETE FROM vino WHERE cod_vino = 90004; SET CONSTRAINTS ALL IMMEDIATE$q$,
     'RN-14', 'Un vino sin movimientos sí se puede borrar (su composición se borra en cascada)') \gset
@@ -435,10 +435,10 @@ GRANT ALL ON SEQUENCE resultado_prueba_n_seq TO app_rw;
 SET LOCAL ROLE app_rw;
 SELECT pg_temp.debe_fallar(
     $q$DROP TABLE vino$q$,
-    'Roles', 'owner', 'app_rw no puede borrar tablas (no es propietario)') \gset
+    'Roles', '42501', 'app_rw no puede borrar tablas (no es propietario)') \gset
 SELECT pg_temp.debe_fallar(
     $q$INSERT INTO auditoria_precio (cod_vino, precio_anterior, precio_nuevo) VALUES (90001, 1, 2)$q$,
-    'Roles', 'permission denied', 'app_rw no puede falsificar la auditoría') \gset
+    'Roles', '42501', 'app_rw no puede falsificar la auditoría') \gset
 SELECT pg_temp.debe_fallar(
     $q$UPDATE ingreso SET estado = 'procesado' WHERE codigo_ingreso = 900003$q$,
     'Roles', 'sp_procesar_ingreso', 'app_rw no puede pasar un ingreso a procesado sin el procedimiento') \gset
