@@ -1,30 +1,74 @@
 -- =====================================================================
--- 007_roles.sql - Configuración de Roles y Privilegios Mínimos
+-- 007_roles.sql  ·  Bodegas del Atuel
+-- Roles y privilegios mínimos.
+--
+--   * Propietario (el usuario que ejecuta las migraciones, por ejemplo
+--     bodega_owner): dueño de todos los objetos. Nunca lo usa la API.
+--   * app_rw: lectura/escritura para la API. Sin DDL ni TRUNCATE.
+--   * app_ro: solo lectura, para reportes o auditoría externa.
+--
+-- IMPORTANTE: este archivo NO contiene contraseñas. Los roles se crean
+-- sin contraseña si no existen; la contraseña se asigna aparte, desde
+-- variables de entorno:
+--   * en local, db/init/00_init.sh (lo ejecuta Docker al iniciar);
+--   * en la nube, db/nube/aplicar_migraciones.sh (o ALTER ROLE ... PASSWORD);
+--     (ver docs/08_nube.md).
 -- =====================================================================
 
--- Crear rol de lectura y escritura para la API (nunca usar el superusuario propietario)
-CREATE ROLE app_rw LOGIN PASSWORD 'cambiar_por_un_secreto_seguro';
+-- Crear los roles solo si no existen (PostgreSQL no tiene CREATE ROLE IF NOT EXISTS).
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_rw') THEN
+        CREATE ROLE app_rw LOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_ro') THEN
+        CREATE ROLE app_ro LOGIN;
+    END IF;
+END
+$$;
 
--- Crear rol de solo lectura para reportes o auditoría externa
-CREATE ROLE app_ro LOGIN PASSWORD 'cambiar_por_otro_secreto';
-
--- Revocar privilegios públicos por defecto en el esquema public
+-- ---------------------------------------------------------------------
+-- 1. Quitar privilegios públicos
+-- ---------------------------------------------------------------------
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+-- Las funciones se pueden ejecutar por PUBLIC por defecto: se revoca y se
+-- otorga explícitamente.
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+REVOKE EXECUTE ON ALL PROCEDURES IN SCHEMA public FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON ROUTINES FROM PUBLIC;
 
--- Otorgar permisos al esquema
-GRANT USAGE ON SCHEMA public TO app_rw;
-GRANT USAGE ON SCHEMA public TO app_ro;
+GRANT USAGE ON SCHEMA public TO app_rw, app_ro;
 
--- Privilegios operativos para la API (app_rw)[cite: 30]
+-- ---------------------------------------------------------------------
+-- 2. app_rw: lo que necesita la API
+-- ---------------------------------------------------------------------
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_rw;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rw;
-
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_rw;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_rw;
+GRANT EXECUTE ON ALL FUNCTIONS  IN SCHEMA public TO app_rw;
+GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA public TO app_rw;
 
-GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO app_rw;
+-- La auditoría solo la escribe el trigger (SECURITY DEFINER): la API puede
+-- leerla pero no insertar, modificar ni borrar registros de auditoría.
+REVOKE INSERT, UPDATE, DELETE ON auditoria_precio FROM app_rw;
+
+-- Objetos que se creen en el futuro con este mismo propietario.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rw;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_rw;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON ROUTINES TO app_rw;
 
--- Privilegios de solo lectura para reportes (app_ro)
+-- ---------------------------------------------------------------------
+-- 3. app_ro: solo lectura
+-- ---------------------------------------------------------------------
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_ro;
+GRANT EXECUTE ON FUNCTION fn_stock_sala(INTEGER, INTEGER),
+                          fn_total_comprobante(INTEGER),
+                          fn_subtotal_bruto_comprobante(INTEGER),
+                          fn_descuento_cliente(INTEGER),
+                          fn_descuento_por_tipo(tipo_cliente),
+                          fn_antiguedad_anios(DATE),
+                          fn_subtotal_renglon(INTEGER, NUMERIC, NUMERIC)
+      TO app_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_ro;
+
+-- La vista materializada la refresca el propietario (no se otorga a la API).
