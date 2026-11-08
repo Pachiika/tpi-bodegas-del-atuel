@@ -1,0 +1,20 @@
+# Secretos
+.env
+*.env
+!.env.example
+# Datos generados (se regeneran con db/seed/seed.py; son ~60 MB)
+db/seed/datos/
+*.dump
+*.sql.gz
+backups/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

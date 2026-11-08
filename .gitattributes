@@ -1,0 +1,5 @@
+# Fin de línea LF siempre (los scripts .sh con CRLF fallan dentro de los contenedores Linux)
+* text=auto eol=lf
+*.png binary
+*.svg text
+*.dump binary
