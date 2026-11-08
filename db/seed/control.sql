@@ -55,11 +55,11 @@ SELECT 'Vinos vendidos antes de su añada',
   JOIN vino v        ON v.cod_vino = r.cod_vino
  WHERE EXTRACT(YEAR FROM c.fecha) <= v.anada
 UNION ALL
-SELECT 'Clientes con subtipo que no coincide (distribuidor/exportador)',
-       (SELECT count(*) FROM cliente c WHERE c.tipo_cliente = 'distribuidor'
-          AND NOT EXISTS (SELECT 1 FROM distribuidor d WHERE d.id_cliente = c.id_cliente))::int
-     + (SELECT count(*) FROM cliente c WHERE c.tipo_cliente = 'exportador'
-          AND NOT EXISTS (SELECT 1 FROM exportador e WHERE e.id_cliente = c.id_cliente))::int
+SELECT 'Clientes cuyos datos no coinciden con su tipo',
+       count(*)::int FROM cliente
+ WHERE NOT ((tipo_cliente = 'socio' AND zona_cobertura IS NULL AND pais_destino_principal IS NULL)
+         OR (tipo_cliente = 'distribuidor' AND zona_cobertura IS NOT NULL AND pais_destino_principal IS NULL)
+         OR (tipo_cliente = 'exportador' AND pais_destino_principal IS NOT NULL AND zona_cobertura IS NULL))
 UNION ALL
 SELECT 'Documentos procesados sin renglones',
        (SELECT count(*) FROM ingreso i WHERE NOT EXISTS
@@ -78,13 +78,13 @@ UNION ALL
 SELECT 'Tablas vacías',
        (SELECT count(*) FROM (VALUES
           ((SELECT count(*) FROM localidad)), ((SELECT count(*) FROM sala_venta)), ((SELECT count(*) FROM empleado)),
-          ((SELECT count(*) FROM cepa)), ((SELECT count(*) FROM departamento)), ((SELECT count(*) FROM finca)),
+          ((SELECT count(*) FROM cepa)), ((SELECT count(*) FROM finca)),
           ((SELECT count(*) FROM parcela)), ((SELECT count(*) FROM bodega)), ((SELECT count(*) FROM lote_uva)),
           ((SELECT count(*) FROM analisis_calidad)), ((SELECT count(*) FROM vino)), ((SELECT count(*) FROM composicion_vino)),
           ((SELECT count(*) FROM maridaje)), ((SELECT count(*) FROM vino_maridaje)), ((SELECT count(*) FROM cliente)),
-          ((SELECT count(*) FROM distribuidor)), ((SELECT count(*) FROM exportador)), ((SELECT count(*) FROM permiso_exportacion)),
+          ((SELECT count(*) FROM permiso_exportacion)),
           ((SELECT count(*) FROM comprobante)), ((SELECT count(*) FROM renglon_comprobante)), ((SELECT count(*) FROM stock_sala)),
-          ((SELECT count(*) FROM stock_deposito)), ((SELECT count(*) FROM transportista)), ((SELECT count(*) FROM transportista_localidad)),
+          ((SELECT count(*) FROM stock_deposito)), ((SELECT count(*) FROM transportista)), ((SELECT count(*) FROM transportista_cubre_localidad)),
           ((SELECT count(*) FROM ingreso)), ((SELECT count(*) FROM renglon_ingreso)), ((SELECT count(*) FROM transferencia)),
           ((SELECT count(*) FROM renglon_transferencia)), ((SELECT count(*) FROM auditoria_precio))
         ) AS t(n) WHERE n = 0)::int;

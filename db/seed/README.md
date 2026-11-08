@@ -27,7 +27,7 @@ export DATABASE_URL_OWNER="host=localhost dbname=bodegas user=bodega_owner passw
 export SEED_FECHA_REFERENCIA=$(date +%F)    # opcional: "hoy" para el dataset (por defecto 2026-11-01)
 
 python db/seed/seed.py generar     # escribe db/seed/datos/*.csv (≈ 8 s)
-python db/seed/seed.py cargar      # COPY de las 29 tablas + setval + REFRESH + ANALYZE + controles (≈ 11 s)
+python db/seed/seed.py cargar      # COPY de las 26 tablas + setval + REFRESH + ANALYZE + controles (≈ 11 s)
 python db/seed/seed.py controles   # solo las consultas de control
 python db/seed/seed.py benchmark   # fila por fila vs executemany vs COPY
 python db/seed/seed.py todo        # generar + cargar + controles

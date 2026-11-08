@@ -182,9 +182,8 @@ def generar():
                  ((i, m["nombre"], m["temperatura_servicio"]) for i, m in enumerate(maridajes, 1)))
     marid_id = {m["nombre"]: i for i, m in enumerate(maridajes, 1)}
 
+    # Los departamentos no son una tabla: el nombre y la provincia se guardan en cada finca.
     deptos = leer_catalogo("departamentos.csv")
-    out.escribir("departamento", ["id_departamento", "nombre", "provincia"],
-                 ((i, d["nombre"], d["provincia"]) for i, d in enumerate(deptos, 1)))
 
     locs = leer_catalogo("localidades.csv")
     cps = [l["codigo_postal"] for l in locs]
@@ -217,7 +216,7 @@ def generar():
         for cp in random.sample(cps, random.randint(3, 6)):
             cobertura.add((t[0], cp))
     # General Alvear queda sin cobertura de algunos transportistas (consulta I1).
-    out.escribir("transportista_localidad", ["codigo_transporte", "cp_localidad"], sorted(cobertura))
+    out.escribir("transportista_cubre_localidad", ["codigo_transporte", "cp_localidad"], sorted(cobertura))
 
     # ---------------- Salas y empleados ----------------
     dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
@@ -243,12 +242,13 @@ def generar():
         n_parc = random.randint(*PARCELAS_POR_FINCA)
         sup_parcelas = [Decimal(random.randint(150, 1200)) / 100 for _ in range(n_parc)]
         sup_total = sum(sup_parcelas) + Decimal(random.randint(100, 2000)) / 100
-        fincas.append((f_id, f"Finca {fake.last_name()} {random.choice(['Norte', 'Sur', 'Alta', 'del Río', 'Vieja', 'Nueva'])}",
-                       sup_total, random.choice(deptos_vitivinicolas)))
+        nombre_finca = f"Finca {fake.last_name()} {random.choice(['Norte', 'Sur', 'Alta', 'del Río', 'Vieja', 'Nueva'])}"
+        depto = deptos[random.choice(deptos_vitivinicolas) - 1]
+        fincas.append((f_id, nombre_finca, sup_total, depto["nombre"], depto["provincia"]))
         for p in range(1, n_parc + 1):
             parcelas.append((f_id, p, sup_parcelas[p - 1], random.randint(1985, 2019),
                              random.choice(tintas if random.random() < 0.75 else blancas)))
-    out.escribir("finca", ["id_finca", "nombre", "superficie_ha", "id_departamento"], fincas)
+    out.escribir("finca", ["id_finca", "nombre", "superficie_ha", "departamento", "provincia"], fincas)
     out.escribir("parcela", ["id_finca", "nro_parcela", "superficie_ha", "anio_plantacion", "id_cepa"], parcelas)
 
     lotes, analisis = [], []
@@ -266,7 +266,7 @@ def generar():
                                  Decimal(random.randint(200, 270)) / 10, Decimal(random.randint(320, 390)) / 100,
                                  Decimal(random.randint(450, 850)) / 100))
     out.escribir("lote_uva", ["nro_lote", "id_finca", "nro_parcela", "campania", "fecha_cosecha",
-                              "kilos_cosechados", "cuit_bodega"], lotes)
+                              "kilos_cosechados", "cuit_bodega_destino"], lotes)
     out.escribir("analisis_calidad", ["id_analisis", "nro_lote", "fecha", "grado_brix", "ph", "acidez_total"], analisis)
 
     # ---------------- Vinos, composición y maridajes ----------------
@@ -363,8 +363,8 @@ def generar():
     for v in vinos:
         vinos_por_anada.setdefault(v[3], []).append(v[0])
 
-    # ---------------- Clientes y subtipos ----------------
-    clientes, distribuidores, exportadores, permisos = [], [], [], []
+    # ---------------- Clientes (una sola tabla, con los datos de cada tipo) ----------------
+    clientes, permisos = [], []
     alta_cliente, tipo_de = {}, {}
     descuento_tipo = {"socio": Decimal(10), "distribuidor": Decimal(20), "exportador": Decimal(30)}
     docs = set()
@@ -386,21 +386,22 @@ def generar():
         docs.add((tipo_doc, doc))
         alta = fecha_al_azar(HOY - timedelta(days=8 * 365), HOY - timedelta(days=15))
         alta_cliente[i], tipo_de[i] = alta, tipo
-        clientes.append((i, nombre, tipo_doc, doc, f"{fake.street_name()} {random.randint(1, 5000)}",
-                         random.choice(cps), alta, tipo, descuento_tipo[tipo]))
+        fila = [i, nombre, tipo_doc, doc, f"{fake.street_name()} {random.randint(1, 5000)}",
+                random.choice(cps), alta, tipo, descuento_tipo[tipo], None, None, None]
         if tipo == "distribuidor":
-            distribuidores.append((i, "distribuidor", random.choice(zonas), f"HAB-{i:06d}"))
+            fila[9], fila[10] = random.choice(zonas), f"HAB-{i:06d}"
         elif tipo == "exportador":
-            exportadores.append((i, "exportador", random.choice(paises)))
+            fila[11] = random.choice(paises)
+        clientes.append(tuple(fila))
+        if tipo == "exportador":
             for k in range(random.choices([1, 2, 3, 4, 5], weights=[30, 30, 20, 12, 8])[0]):
                 emision = fecha_al_azar(alta, HOY)
                 permisos.append((f"PE-{i:06d}-{k + 1}", i, emision,
                                  emision + timedelta(days=random.choice([180, 365, 730]))))
     out.escribir("cliente", ["id_cliente", "nombre_o_razon_social", "tipo_doc", "nro_doc", "direccion",
-                             "cp_localidad", "fecha_alta", "tipo_cliente", "descuento"], clientes)
-    out.escribir("distribuidor", ["id_cliente", "tipo_cliente", "zona_cobertura", "nro_habilitacion"], distribuidores)
-    out.escribir("exportador", ["id_cliente", "tipo_cliente", "pais_destino"], exportadores)
-    out.escribir("permiso_exportacion", ["cod_permiso", "id_cliente", "fecha_emision", "fecha_vencimiento"], permisos)
+                             "cp_localidad", "fecha_alta", "tipo_cliente", "descuento",
+                             "zona_cobertura", "nro_habilitacion", "pais_destino_principal"], clientes)
+    out.escribir("permiso_exportacion", ["codigo", "id_cliente", "fecha_emision", "fecha_vencimiento"], permisos)
 
     # ---------------- Comprobantes y renglones ----------------
     # Ventas de los últimos 6 años (algunas superan los 5 años: consulta D1).
@@ -520,17 +521,17 @@ def generar():
 # =====================================================================
 # Orden de carga según las dependencias de las claves foráneas:
 ORDEN_CARGA = [
-    "localidad", "departamento", "cepa", "maridaje", "bodega", "transportista",
-    "transportista_localidad", "sala_venta", "empleado", "finca", "parcela", "lote_uva",
+    "localidad", "cepa", "maridaje", "bodega", "transportista",
+    "transportista_cubre_localidad", "sala_venta", "empleado", "finca", "parcela", "lote_uva",
     "analisis_calidad", "vino", "composicion_vino", "vino_maridaje", "cliente",
-    "distribuidor", "exportador", "permiso_exportacion", "comprobante", "renglon_comprobante",
+    "permiso_exportacion", "comprobante", "renglon_comprobante",
     "ingreso", "renglon_ingreso", "transferencia", "renglon_transferencia",
     "stock_deposito", "stock_sala", "auditoria_precio",
 ]
 
-# Columnas IDENTITY cuya secuencia hay que ajustar después de cargar ids explícitos.
+# Columnas SERIAL cuya secuencia hay que ajustar después de cargar ids explícitos.
 IDENTITIES = {
-    "sala_venta": "id_sala", "cepa": "id_cepa", "departamento": "id_departamento", "finca": "id_finca",
+    "sala_venta": "id_sala", "cepa": "id_cepa", "finca": "id_finca",
     "lote_uva": "nro_lote", "analisis_calidad": "id_analisis", "vino": "cod_vino", "maridaje": "id_maridaje",
     "cliente": "id_cliente", "comprobante": "nro_comprobante", "transportista": "codigo_transporte",
     "ingreso": "codigo_ingreso", "transferencia": "nro_transferencia", "auditoria_precio": "id_auditoria",
