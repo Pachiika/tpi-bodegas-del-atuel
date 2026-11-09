@@ -1,0 +1,75 @@
+# Levanta base + API + front con un solo comando:
+#     cp .env.example .env      (y cambiar las contraseñas)
+#     docker compose up --build
+# Cargar el dataset de ~500.000 renglones (una vez, tarda alrededor de 1 minuto):
+#     docker compose --profile seed run --rm seed
+# Front: http://localhost:8080   API/Swagger: http://localhost:8000/docs
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bodegas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir en .env}
+      BODEGA_OWNER_PASSWORD: ${BODEGA_OWNER_PASSWORD:?definir en .env}
+      APP_RW_PASSWORD: ${APP_RW_PASSWORD:?definir en .env}
+      APP_RO_PASSWORD: ${APP_RO_PASSWORD:?definir en .env}
+      TZ: America/Argentina/Mendoza
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/migrations:/migraciones:ro
+    ports:
+      - "${DB_PUERTO_LOCAL:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bodegas"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: bodegas
+      DB_USER: app_rw                      # nunca el propietario ni el superusuario
+      DB_PASSWORD: ${APP_RW_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      TZ: America/Argentina/Mendoza
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  front:
+    build: ./front
+    restart: unless-stopped
+    environment:
+      API_URL: ${API_URL_PUBLICA:-http://localhost:8000}
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+  # Servicio opcional (perfil "seed"): genera los CSV y los carga como bodega_owner.
+  seed:
+    profiles: ["seed"]
+    build: ./api
+    working_dir: /repo
+    environment:
+      DATABASE_URL_OWNER: "host=db port=5432 dbname=bodegas user=bodega_owner password=${BODEGA_OWNER_PASSWORD}"
+      SEED_FECHA_REFERENCIA: ${SEED_FECHA_REFERENCIA:-}
+    volumes:
+      - ./db:/repo/db
+    command: ["python", "db/seed/seed.py", "todo"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
