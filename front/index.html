@@ -1,39 +1,170 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bodegas del Atuel - Panel de Control</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f4f9; }
-        h1 { color: #5a189a; }
-        table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #7b2cbf; color: white; }
-        button { background-color: #7b2cbf; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; }
-        button:hover { background-color: #5a189a; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bodegas del Atuel</title>
+  <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-    <h1>🍷 Bodegas del Atuel - Stock en Tiempo Real</h1>
-    <button onclick="cargarStock()">Actualizar Stock</button>
+  <header>
+    <h1>Bodegas del Atuel</h1>
+    <nav>
+      <button data-pantalla="catalogo" class="activa">Catálogo</button>
+      <button data-pantalla="vino">Alta / edición de vino</button>
+      <button data-pantalla="venta">Nueva venta</button>
+      <button data-pantalla="transferencias">Transferencias</button>
+      <button data-pantalla="tablero">Tablero</button>
+    </nav>
+    <span id="estado-api" title="GET /salud">API: …</span>
+  </header>
 
-    <table id="tabla-stock">
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Nombre Vino</th>
-                <th>Añada</th>
-                <th>Stock Depósito</th>
-                <th>Stock Salas</th>
-                <th>Stock Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="6">Cargando datos...</td></tr>
-        </tbody>
-    </table>
+  <div id="mensaje" class="oculto" role="alert"></div>
 
-    <script src="app.js"></script>
+  <main>
+    <!-- ============================================================ 1. Catálogo -->
+    <section id="catalogo" class="pantalla">
+      <h2>Catálogo de vinos</h2>
+      <form id="filtros" class="fila">
+        <label>Nombre <input name="nombre" placeholder="comienza con…"></label>
+        <label>Tipo
+          <select name="tipo"><option value="">(todos)</option><option>tinto</option><option>blanco</option><option>rosado</option><option>espumante</option></select>
+        </label>
+        <label>Cepa <select name="cepa" class="combo-cepas"><option value="">(todas)</option></select></label>
+        <label>Bodega <select name="bodega" class="combo-bodegas"><option value="">(todas)</option></select></label>
+        <label>Añada <input name="anada" type="number" min="1990" max="2100" style="width:6em"></label>
+        <button type="submit">Buscar</button>
+      </form>
+      <table id="tabla-vinos">
+        <thead><tr><th>Cód.</th><th>Nombre</th><th>Tipo</th><th>Añada</th><th>ml</th><th>Precio</th><th>Bodega</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="paginador">
+        <button id="pag-ant">◀ Anterior</button>
+        <span id="pag-info"></span>
+        <button id="pag-sig">Siguiente ▶</button>
+      </div>
+      <div id="ficha" class="tarjeta oculto"></div>
+    </section>
+
+    <!-- ===================================================== 2. Alta y edición -->
+    <section id="vino" class="pantalla oculto">
+      <h2 id="titulo-vino">Alta de vino</h2>
+      <form id="form-vino">
+        <input type="hidden" name="cod_vino">
+        <div class="grilla">
+          <label>Nombre <input name="nombre" required></label>
+          <label>Tipo
+            <select name="tipo"><option>tinto</option><option>blanco</option><option>rosado</option><option>espumante</option></select>
+          </label>
+          <label>Añada <input name="anada" type="number" required></label>
+          <label>Volumen (ml)
+            <select name="volumen_ml"><option>750</option><option>187</option><option>375</option><option>1500</option><option>3000</option></select>
+          </label>
+          <label>Graduación (%) <input name="graduacion" type="number" step="0.01" required></label>
+          <label>Precio ($) <input name="precio" type="number" step="0.01" required></label>
+          <label>Bodega <select name="cuit_bodega" class="combo-bodegas" required></select></label>
+        </div>
+        <h3>Composición de cepas <small>(la base exige que sume 100 %)</small></h3>
+        <table id="tabla-composicion">
+          <thead><tr><th>Cepa</th><th>%</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button type="button" id="agregar-cepa">+ Agregar cepa</button>
+        <h3>Maridajes</h3>
+        <div id="lista-maridajes" class="checks"></div>
+        <p>
+          <button type="submit">Guardar</button>
+          <button type="button" id="nuevo-vino">Limpiar (nuevo)</button>
+          <button type="button" id="borrar-vino" class="peligro oculto">Borrar vino</button>
+        </p>
+      </form>
+    </section>
+
+    <!-- ========================================================= 3. Nueva venta -->
+    <section id="venta" class="pantalla oculto">
+      <h2>Nueva venta</h2>
+      <div class="fila">
+        <label>Cliente (buscar)
+          <input id="buscar-cliente" placeholder="nombre o documento">
+        </label>
+        <select id="combo-clientes"></select>
+        <label>Sala <select id="venta-sala" class="combo-salas"></select></label>
+      </div>
+      <div class="fila">
+        <label>Vino (buscar por nombre) <input id="buscar-vino" placeholder="comienza con…"></label>
+        <select id="combo-vinos"></select>
+        <label>Cantidad <input id="venta-cantidad" type="number" min="1" value="1" style="width:5em"></label>
+        <button id="agregar-renglon">Agregar</button>
+      </div>
+      <table id="tabla-renglones-venta">
+        <thead><tr><th>Cód.</th><th>Vino</th><th>Cantidad</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p><button id="confirmar-venta">Confirmar venta</button></p>
+      <div id="resultado-venta" class="tarjeta oculto"></div>
+    </section>
+
+    <!-- ====================================================== 4. Transferencias -->
+    <section id="transferencias" class="pantalla oculto">
+      <h2>Transferencias depósito → sala</h2>
+      <div class="fila">
+        <label>Sala <select id="transf-sala" class="combo-salas"></select></label>
+        <button id="crear-transf">Crear transferencia</button>
+        <label>Ver estado
+          <select id="transf-filtro"><option value="">(todas)</option><option>en_confeccion</option><option>terminado</option><option>procesado</option></select>
+        </label>
+      </div>
+      <div class="dos-columnas">
+        <div>
+          <table id="tabla-transf">
+            <thead><tr><th>Nro</th><th>Sala</th><th>Fecha</th><th>Estado</th><th>Botellas</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="detalle-transf" class="tarjeta oculto">
+          <h3 id="transf-titulo"></h3>
+          <p>Estado: <strong id="transf-estado"></strong></p>
+          <table id="tabla-transf-renglones">
+            <thead><tr><th>Cód.</th><th>Vino</th><th>Cantidad</th><th>Stock depósito</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="fila" id="transf-carga">
+            <input id="transf-vino" type="number" placeholder="cód. vino" style="width:7em">
+            <input id="transf-cantidad" type="number" min="1" placeholder="cantidad" style="width:7em">
+            <button id="transf-agregar">Agregar renglón</button>
+          </div>
+          <p>
+            <button id="transf-terminar">Terminar</button>
+            <button id="transf-procesar">Procesar</button>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== 5. Tablero -->
+    <section id="tablero" class="pantalla oculto">
+      <h2>Tablero</h2>
+      <div class="dos-columnas">
+        <div class="tarjeta">
+          <h3>Top 10 vinos más vendidos</h3>
+          <table id="tabla-top"><thead><tr><th>#</th><th>Vino</th><th>Añada</th><th>Botellas</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="tarjeta">
+          <h3>Ventas por sala · último trimestre</h3>
+          <div id="grafico-ventas"></div>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h3>Vinos sin stock en la sala (con stock en depósito)</h3>
+        <label>Sala <select id="tablero-sala" class="combo-salas"></select></label>
+        <table id="tabla-sin-stock"><thead><tr><th>Cód.</th><th>Vino</th><th>Añada</th><th>Stock depósito</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
