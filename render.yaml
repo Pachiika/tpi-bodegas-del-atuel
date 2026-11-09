@@ -1,0 +1,46 @@
+# Blueprint de Render (opcional): crea base, API y front desde este repositorio.
+# Render Dashboard -> New -> Blueprint -> elegir el repo. Revisar los planes y
+# límites vigentes antes de aplicarlo (ver docs/08_nube.md).
+databases:
+  - name: bodegas-db
+    plan: free
+    databaseName: bodegas
+    postgresMajorVersion: "16"
+    region: oregon
+    ipAllowList: []            # sin reglas = nadie entra desde internet; la API usa la red interna.
+                               # Para cargar datos desde la PC, agregar temporalmente la IP del grupo.
+
+services:
+  - type: web
+    name: bodegas-api
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: api
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: bodegas-db, property: host }   # host INTERNO (red privada)
+      - key: DB_PORT
+        fromDatabase: { name: bodegas-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: bodegas-db, property: database }
+      - key: DB_USER
+        value: app_rw                                          # NUNCA el usuario dueño
+      - key: DB_PASSWORD
+        sync: false                                            # se carga a mano en el panel (secreto)
+      - key: DB_SSLMODE
+        value: prefer
+      - key: CORS_ORIGINS
+        sync: false                                            # URL pública del front
+
+  - type: web
+    name: bodegas-front
+    runtime: static
+    rootDir: front
+    buildCommand: echo "window.CONFIG = { API_URL: \"$API_URL\" };" > js/config.js
+    staticPublishPath: .
+    envVars:
+      - key: API_URL
+        sync: false                                            # URL pública de la API (https://...)
