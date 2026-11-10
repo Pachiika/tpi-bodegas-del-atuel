@@ -1,57 +1,14 @@
-"""
-Carga masiva reproducible · Bodegas del Atuel
-=============================================
+# Carga masiva reproducible · Bodegas del Atuel
 
-Uso (desde la raíz del repositorio):
+## Uso (desde la raíz del repositorio)
+#* `python db/seed/seed.py generar` — Genera los CSV en `db/seed/datos/`.
+#* `python db/seed/seed.py cargar` — Realiza la carga rápida mediante `COPY` (vía `psycopg`).
+#* `python db/seed/seed.py todo` — Ejecuta el flujo completo: generación + carga + controles.
+#* `python db/seed/seed.py benchmark` — Compara el rendimiento de inserción fila por fila vs. lotes vs. `COPY`.
 
-    python db/seed/seed.py generar      # genera los CSV en db/seed/datos/
-    python db/seed/seed.py cargar       # los carga con COPY (psycopg)
-    python db/seed/seed.py todo         # generar + cargar + controles
-    python db/seed/seed.py benchmark    # compara fila por fila vs lotes vs COPY
-
-La conexión se toma de la variable de entorno DATABASE_URL_OWNER (la carga
-la hace el rol PROPIETARIO, no el de la API). Ejemplo:
-
-    export DATABASE_URL_OWNER="postgresql://bodega_owner:****@localhost:5432/bodegas"
-
-Reproducibilidad
-----------------
-* random.seed(SEMILLA) y Faker.seed(SEMILLA) (clase propia, sin librerías
-  externas): dos ejecuciones con la misma versión de Python generan exactamente los mismos CSV
-  (se puede verificar con:  sha256sum db/seed/datos/*.csv).
-* Los catálogos (cepas, maridajes, departamentos y localidades de Mendoza)
-  NO se generan: se leen de db/seed/catalogos/*.csv.
-
-Coherencia de los datos
------------------------
-* Fechas lógicas: un cliente compra después de su fecha de alta; los vinos
-  vendidos son de añadas anteriores al año de la venta; la cosecha cae en
-  febrero-abril del año de su campaña.
-* Porcentajes de corte que suman exactamente 100.
-* Descuento del renglón = descuento del tipo de cliente (10/20/30 %),
-  subtotales y totales calculados con el mismo redondeo que las funciones
-  de la base (fn_subtotal_renglon).
-* Stocks finales siempre >= 0.
-
-Triggers durante la carga
--------------------------
-La carga del HISTORIAL (ventas, ingresos y transferencias ya procesados,
-con fechas pasadas) chocaría con los triggers: la fecha de confección se
-forzaría a hoy, los documentos no podrían nacer "procesados" y cada venta
-volvería a descontar stock. Por eso se hace:
-
-    ALTER TABLE ... DISABLE TRIGGER USER;   -- solo triggers propios
-    COPY ...;
-    ALTER TABLE ... ENABLE TRIGGER USER;
-
-DISABLE TRIGGER USER deja ACTIVOS los triggers internos de las claves
-foráneas, así que la integridad referencial se sigue verificando. Lo que
-dejan de verificar los triggers propios (totales, stock, suma de corte) se
-valida después con las consultas de control (db/seed/control.sql).
-Riesgo: si el generador tuviera un error, los datos podrían violar una
-regla sin que nadie lo note; por eso los controles son obligatorios y la
-carga termina con error si alguno encuentra inconsistencias.
-"""
+#La conexión se configura mediante la variable de entorno `DATABASE_URL_OWNER` (la carga la ejecuta el rol **propietario**, nunca el de la API):
+#```bash
+#export DATABASE_URL_OWNER="postgresql://bodega_owner:****@localhost:5432/bodegas"
 
 from __future__ import annotations
 

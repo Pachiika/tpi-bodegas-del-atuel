@@ -1,23 +1,16 @@
--- =============================================
--- 001_esquema.sql
--- Crea los tipos, los dominios y todas las tablas con sus claves
--- primarias y foraneas (segun el modelo del grupo).
--- Las restricciones UNIQUE, CHECK y DEFAULT estan en 002_constraints.sql
--- =============================================
+-- 001_esquema.sql: Creación de tipos, dominios y tablas con sus relaciones PK/FK (restricciones en 002_constraints.sql).
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
--- ---------- Tipo ENUM ----------
--- El estado de ingresos y transferencias solo puede tomar estos 3 valores.
--- (El enunciado pide que el estado sea un tipo ENUM.)
+-- Tipo ENUM: 3 estados permitidos para ingresos y transferencias.
 CREATE TYPE estado_ingreso AS ENUM ('en_confeccion', 'terminado', 'procesado');
 CREATE TYPE estado_transferencia AS ENUM ('en_confeccion', 'terminado', 'procesado');
 
 
--- ---------- Dominios ----------
+--  Dominios 
 -- Un dominio es un tipo de dato con una condicion ya incluida.
 
--- CUIT: 11 numeros
+
 CREATE DOMAIN cuit_dom AS VARCHAR(11)
     CHECK (VALUE ~ '^[0-9]{11}$');
 
@@ -30,7 +23,7 @@ CREATE DOMAIN porcentaje_dom AS NUMERIC(5,2)
     CHECK (VALUE BETWEEN 0 AND 100);
 
 
--- ---------- Localidades, salas y empleados ----------
+--  Localidades, salas y empleados 
 
 CREATE TABLE localidad (
     codigo_postal      VARCHAR(10) PRIMARY KEY,
@@ -58,7 +51,7 @@ CREATE TABLE empleado (
 );
 
 
--- ---------- Fincas, parcelas, lotes y analisis ----------
+--  Fincas, parcelas, lotes y analisis 
 
 CREATE TABLE cepa (
     id_cepa SERIAL PRIMARY KEY,
@@ -117,7 +110,7 @@ CREATE TABLE analisis_calidad (
 );
 
 
--- ---------- Vinos, cortes y maridajes ----------
+--  Vinos, cortes y maridajes 
 
 CREATE TABLE vino (
     cod_vino    SERIAL PRIMARY KEY,
@@ -156,12 +149,7 @@ CREATE TABLE vino_maridaje (
 );
 
 
--- ---------- Clientes ----------
--- Jerarquia de clientes en UNA SOLA TABLA con la columna tipo_cliente.
--- Los datos propios de cada tipo quedan en NULL cuando no corresponden:
---   distribuidor -> zona_cobertura y nro_habilitacion
---   exportador   -> pais_destino_principal
--- Un CHECK en 002 controla que cada tipo tenga solo sus datos.
+-- Clientes: modelo de tabla única con campos condicionales según tipo (controlado por constraint en 002).
 CREATE TABLE cliente (
     id_cliente             SERIAL PRIMARY KEY,
     nombre_o_razon_social  VARCHAR(120) NOT NULL,
@@ -188,7 +176,7 @@ CREATE TABLE permiso_exportacion (
 );
 
 
--- ---------- Ventas ----------
+--  Ventas 
 
 CREATE TABLE comprobante (
     nro_comprobante SERIAL PRIMARY KEY,
@@ -215,7 +203,7 @@ CREATE TABLE renglon_comprobante (
 );
 
 
--- ---------- Stock ----------
+--  Stock 
 
 CREATE TABLE stock_sala (
     id_sala  INT NOT NULL
@@ -234,7 +222,7 @@ CREATE TABLE stock_deposito (
 );
 
 
--- ---------- Transportistas, ingresos y transferencias ----------
+--  Transportistas, ingresos y transferencias 
 
 CREATE TABLE transportista (
     codigo_transporte SERIAL PRIMARY KEY,
@@ -291,8 +279,7 @@ CREATE TABLE renglon_transferencia (
 );
 
 
--- ---------- Auditoria de precios (RN-13) ----------
--- La llena un trigger cada vez que cambia el precio de un vino.
+-- Auditoría de precios (RN-13): bitácora automática de cambios de precios por trigger.
 CREATE TABLE auditoria_precio (
     id_auditoria    SERIAL PRIMARY KEY,
     cod_vino        INT NOT NULL
@@ -304,8 +291,7 @@ CREATE TABLE auditoria_precio (
 );
 
 
--- ---------- Descripcion de cada tabla ----------
--- (queda guardada en la base y se usa para armar el diccionario de datos)
+-- Documentación de tablas integrada en la base para el diccionario de datos.
 COMMENT ON TABLE localidad IS 'Localidades de Mendoza. El encargado regional depende solo de la localidad (RN-02).';
 COMMENT ON TABLE sala_venta IS 'Salas de venta; cada una en una localidad y con un dia de cierre semanal.';
 COMMENT ON TABLE empleado IS 'Empleados; cada uno trabaja en una sola sala (RN-03).';

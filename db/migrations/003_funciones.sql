@@ -1,13 +1,8 @@
--- =============================================
--- 003_funciones.sql
--- Funciones que despues usan los triggers, las consultas y la API.
--- =============================================
+-- 003_funciones.sql: Definición de funciones auxiliares para triggers, vistas y la aplicación.
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
--- Descuento segun el tipo de cliente (RN-06)
--- socio = 10%, distribuidor = 20%, exportador = 30%
--- Ejemplo: SELECT fn_descuento_por_tipo('socio');  --> 10
+-- RN-06: Cálculo del descuento porcentual según el rol del cliente.
 CREATE OR REPLACE FUNCTION fn_descuento_por_tipo(tipo VARCHAR)
 RETURNS NUMERIC
 AS $$
@@ -23,10 +18,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Descuento que tiene guardado un cliente (RN-06)
--- Si el cliente no existe, da error.
--- (el parametro no se llama "cliente" porque se confundiria con la tabla)
--- Ejemplo: SELECT fn_descuento_cliente(1);
+-- RN-06: Obtiene el porcentaje de descuento registrado de un cliente (falla si no existe).
 CREATE OR REPLACE FUNCTION fn_descuento_cliente(id_buscado INTEGER)
 RETURNS NUMERIC
 AS $$
@@ -48,7 +40,7 @@ $$ LANGUAGE plpgsql;
 
 -- Cuantas botellas hay de un vino en una sala (RN-09)
 -- Si no hay ninguna fila de stock, devuelve 0.
--- Ejemplo: SELECT fn_stock_sala(1, 5);
+
 CREATE OR REPLACE FUNCTION fn_stock_sala(sala INTEGER, vino INTEGER)
 RETURNS INTEGER
 AS $$
@@ -70,7 +62,7 @@ $$ LANGUAGE plpgsql;
 
 -- Subtotal de un renglon: cantidad * precio, menos el descuento (RN-08)
 -- Se redondea a 2 decimales.
--- Ejemplo: SELECT fn_subtotal_renglon(2, 10000, 20);  --> 16000.00
+
 CREATE OR REPLACE FUNCTION fn_subtotal_renglon(cantidad INTEGER, precio NUMERIC, descuento NUMERIC)
 RETURNS NUMERIC
 AS $$
@@ -113,9 +105,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Cuantos años pasaron desde una fecha hasta hoy
--- Se usa para la antiguedad de empleados y clientes (consultas U2, D1, D3, D4).
--- Ejemplo: SELECT fn_antiguedad_anios('2020-03-15');
+-- Calcula la antigüedad en años desde una fecha hasta la fecha actual.
 CREATE OR REPLACE FUNCTION fn_antiguedad_anios(fecha DATE)
 RETURNS INTEGER
 AS $$

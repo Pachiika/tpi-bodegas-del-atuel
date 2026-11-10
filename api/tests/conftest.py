@@ -1,11 +1,4 @@
-"""Pruebas contra una base PostgreSQL real (la de docker compose).
-
-Cada corrida crea su propio juego de datos (localidad, sala, bodega, cepas,
-vino con stock, cliente, transportista) con un sufijo aleatorio, usando la
-misma conexión de la API (rol app_rw), y al final borra lo que puede.
-
-    docker compose exec api pytest -v
-"""
+"""Tests de integración con DB real en Docker. Ejecutar: docker compose exec api pytest -v"""
 import random
 import string
 

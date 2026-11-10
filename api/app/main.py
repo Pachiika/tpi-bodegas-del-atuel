@@ -1,7 +1,4 @@
-"""API REST de Bodegas del Atuel (FastAPI + psycopg 3, sin ORM).
-
-Documentación interactiva: /docs (Swagger UI) y /openapi.json
-"""
+# API REST Bodegas del Atuel (FastAPI + psycopg3, sin ORM). Documentación: /docs
 import logging
 from contextlib import asynccontextmanager
 

@@ -1,11 +1,4 @@
-"""Transferencias (depósito -> sala) e ingresos (bodega -> depósito).
-
-Circuito: en_confeccion -> terminado -> procesado (RN-10, RN-11, RN-12).
-- Los renglones solo se cargan en confección (lo controla un trigger).
-- 'terminar' es un UPDATE de estado; el trigger exige que haya renglones.
-- 'procesar' invoca el procedimiento almacenado, que mueve el stock dentro de
-  la misma transacción. La API no toca stock ni estados por su cuenta.
-"""
+# Circuito de movimientos de stock: estados validados por triggers y ejecución en SP.
 from psycopg import Connection
 
 # ----------------------------------------------------------------- transferencias

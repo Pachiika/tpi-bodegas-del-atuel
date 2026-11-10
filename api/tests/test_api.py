@@ -1,9 +1,6 @@
-"""Pruebas automáticas de la API (pytest).
+#Pruebas automáticas de la API (pytest).
 
-Las marcadas con "REGLA" provocan a propósito la violación de una regla de
-la base y verifican que la API devuelva el código HTTP de la tabla de
-traducción de SQLSTATE y que no queden datos a medias.
-"""
+
 import pytest
 
 
@@ -39,7 +36,7 @@ def socio(cliente_http, datos):
     return r.json()
 
 
-# ----------------------------------------------------------------- funcionamiento
+# funcionamiento
 def test_salud_usa_rol_sin_privilegios(cliente_http):
     r = cliente_http.get("/salud")
     assert r.status_code == 200
@@ -110,7 +107,7 @@ def test_circuito_transferencia(cliente_http, datos, vino, conexion):
     assert dep["cantidad"] == 95
 
 
-# --------------------------------------------------- REGLA: violaciones a propósito
+#  REGLA: violaciones a propósito
 def test_REGLA_venta_sin_stock_409_y_sin_datos_a_medias(cliente_http, datos, vino, socio, conexion):
     antes = conexion.execute("SELECT count(*) AS n FROM comprobante WHERE id_sala=%s",
                              (datos["id_sala"],)).fetchone()["n"]

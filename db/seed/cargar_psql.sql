@@ -1,11 +1,4 @@
--- =====================================================================
--- db/seed/cargar_psql.sql · Alternativa a 'seed.py cargar' usando solo psql
--- Carga los CSV de db/seed/datos/ con \copy, en el orden de las FK.
--- Ejecutar DESDE LA RAÍZ del repositorio, con el rol propietario:
---     python db/seed/seed.py generar
---     psql "$DATABASE_URL_OWNER" -f db/seed/cargar_psql.sql
--- (Mismo manejo de triggers que seed.py: ver comentario en seed.py.)
--- =====================================================================
+-- db/seed/cargar_psql.sql: Script nativo en psql para la carga masiva de datos desde archivos CSV, respetando el orden de dependencias por clave foránea y el control de triggers.
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 \set ON_ERROR_STOP on
 \timing on

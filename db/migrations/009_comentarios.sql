@@ -2,7 +2,7 @@ SET client_encoding = 'UTF8';
 
 -- 009_comentarios.sql
 -- Descripción de cada columna (COMMENT ON COLUMN).
--- Alimenta la columna "Descripción" del diccionario de datos (docs/02_diccionario_datos.md).
+-- Alimenta la columna "Descripción" del diccionario de datos 
 
 -- analisis_calidad
 COMMENT ON COLUMN analisis_calidad.id_analisis IS 'Identificador del análisis de calidad.';

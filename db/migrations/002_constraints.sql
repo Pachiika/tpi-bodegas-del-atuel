@@ -1,13 +1,8 @@
--- =============================================
--- 002_constraints.sql
--- Restricciones: UNIQUE, CHECK y DEFAULT
--- A cada restriccion le ponemos nombre para que el
--- mensaje de error diga cual fue la que fallo.
--- =============================================
+-- 002_constraints.sql: Definición de constraints con nombres descriptivos para mensajes de error claros.
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
--- ---------- UNIQUE (valores que no se pueden repetir) ----------
+
 
 ALTER TABLE cepa ADD CONSTRAINT uq_cepa_nombre UNIQUE (nombre);
 ALTER TABLE bodega ADD CONSTRAINT uq_bodega_razon_social UNIQUE (razon_social);
@@ -28,11 +23,7 @@ ALTER TABLE cliente ADD CONSTRAINT uq_cliente_documento UNIQUE (tipo_doc, nro_do
 ALTER TABLE cliente ADD CONSTRAINT uq_cliente_habilitacion UNIQUE (nro_habilitacion);
 
 
--- ---------- CHECK (condiciones que tiene que cumplir cada fila) ----------
--- Ojo: en los CHECK no usamos CURRENT_DATE porque el resultado
--- cambiaria segun el dia. Esas reglas van en triggers (005).
-
--- Valores permitidos en las columnas de "tipo" (lista cerrada)
+-- Restricciones CHECK: validación de valores permitidos (excluye CURRENT_DATE por no ser determinista).
 ALTER TABLE cepa ADD CONSTRAINT ck_cepa_tipo CHECK (tipo IN ('tinta', 'blanca'));
 ALTER TABLE vino ADD CONSTRAINT ck_vino_tipo CHECK (tipo IN ('tinto', 'blanco', 'rosado', 'espumante'));
 ALTER TABLE cliente ADD CONSTRAINT ck_cliente_tipo CHECK (tipo_cliente IN ('socio', 'distribuidor', 'exportador'));
@@ -72,10 +63,7 @@ ALTER TABLE empleado ADD CONSTRAINT ck_empleado_salario CHECK (salario > 0);
 ALTER TABLE cliente ADD CONSTRAINT ck_cliente_descuento CHECK (descuento BETWEEN 0 AND 50);
 ALTER TABLE cliente ADD CONSTRAINT ck_cliente_tipo_doc CHECK (tipo_doc IN ('DNI', 'CUIT', 'PASAPORTE'));
 
--- CHECK entre varias columnas: cada tipo de cliente tiene solo sus datos.
---   socio:        no tiene zona, habilitacion ni pais
---   distribuidor: tiene zona y habilitacion, no tiene pais
---   exportador:   tiene pais, no tiene zona ni habilitacion
+-- CHECK: exclusividad condicional de atributos según el tipo de cliente.
 ALTER TABLE cliente ADD CONSTRAINT ck_cliente_datos_tipo CHECK (
     (tipo_cliente = 'socio'
         AND zona_cobertura IS NULL AND nro_habilitacion IS NULL AND pais_destino_principal IS NULL)
@@ -107,8 +95,7 @@ ALTER TABLE stock_deposito ADD CONSTRAINT ck_stock_deposito_no_negativo CHECK (c
 ALTER TABLE transportista ADD CONSTRAINT ck_transportista_email CHECK (email LIKE '%_@_%._%');
 
 
--- ---------- DEFAULT (valor que se pone si no se carga nada) ----------
-
+--  DEFAULT (valor que se pone si no se carga nada) 
 -- Todo ingreso y transferencia empieza "en confeccion" y con la fecha y hora actual
 ALTER TABLE ingreso ALTER COLUMN estado SET DEFAULT 'en_confeccion';
 ALTER TABLE ingreso ALTER COLUMN fecha SET DEFAULT now();

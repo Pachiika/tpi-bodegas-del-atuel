@@ -1,16 +1,4 @@
-#!/bin/bash
-# =====================================================================
-# Inicialización de la base en el contenedor de PostgreSQL.
-# La imagen oficial ejecuta este script UNA sola vez, cuando el volumen de
-# datos está vacío (para reiniciar: docker compose down -v).
-#
-# 1. Crea los roles: bodega_owner (propietario del esquema), app_rw (API)
-#    y app_ro (consultas), con contraseñas tomadas de variables de entorno.
-# 2. Aplica las migraciones 001..008 CONECTADO COMO bodega_owner, para que
-#    tablas, funciones y procedimientos SECURITY DEFINER sean suyos y no del
-#    superusuario.
-# Las contraseñas nunca se escriben en el repositorio: vienen del archivo .env.
-# =====================================================================
+# Inicializa la base de datos en Docker: crea roles y aplica migraciones como bodega_owner (credenciales desde .env).
 set -euo pipefail
 
 : "${BODEGA_OWNER_PASSWORD:?Falta BODEGA_OWNER_PASSWORD en .env}"

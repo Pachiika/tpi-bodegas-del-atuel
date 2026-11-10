@@ -1,15 +1,6 @@
--- =====================================================================
--- 006_vistas.sql  ·  Bodegas del Atuel
--- Vistas del sistema (3 comunes + 1 materializada).
--- =====================================================================
-SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
-
--- ---------------------------------------------------------------------
--- V1 · Stock total por vino = depósito central + suma de todas las salas.
--- Se agrega primero el stock de salas en una subconsulta para no
--- multiplicar filas al combinar depósito y salas.
--- La usan S6, S9, el endpoint GET /vinos/{cod} y el tablero.
--- ---------------------------------------------------------------------
+-- 006_vistas.sql: Definición de vistas del sistema (3 vistas estándar y 1 materializada para consultas frecuentes y reportes optimizados).
+SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 
+-- V1: Vista de stock consolidado con optimización de subconsulta para evitar duplicación en uniones.
 CREATE OR REPLACE VIEW vw_stock_total_vino AS
 SELECT v.cod_vino,
        v.nombre,
@@ -26,9 +17,9 @@ SELECT v.cod_vino,
 
 COMMENT ON VIEW vw_stock_total_vino IS 'Stock por vino: depósito central, salas y total.';
 
--- ---------------------------------------------------------------------
+
 -- V2 · Ventas mensuales por sala (cantidad de comprobantes y monto).
--- ---------------------------------------------------------------------
+
 CREATE OR REPLACE VIEW vw_ventas_mensuales_sala AS
 SELECT s.id_sala,
        l.nombre || ' - ' || s.calle || ' ' || s.numero AS sala,
@@ -42,9 +33,9 @@ SELECT s.id_sala,
 
 COMMENT ON VIEW vw_ventas_mensuales_sala IS 'Monto vendido y cantidad de comprobantes por sala y mes.';
 
--- ---------------------------------------------------------------------
+
 -- V3 · Documentos pendientes (ingresos y transferencias no procesados).
--- ---------------------------------------------------------------------
+
 CREATE OR REPLACE VIEW vw_documentos_pendientes AS
 SELECT 'ingreso'::text     AS tipo_documento,
        i.codigo_ingreso    AS numero,
@@ -68,13 +59,7 @@ SELECT 'transferencia'::text,
 
 COMMENT ON VIEW vw_documentos_pendientes IS 'Ingresos y transferencias en confección o terminados.';
 
--- ---------------------------------------------------------------------
--- V4 · (Materializada) Botellas vendidas e importe por vino.
--- Calcularla recorre los ~500.000 renglones, por eso se materializa:
--- el tablero la lee en milisegundos. Se actualiza con
---   REFRESH MATERIALIZED VIEW CONCURRENTLY mv_ventas_por_vino;
--- (CONCURRENTLY necesita el índice único que se crea abajo).
--- ---------------------------------------------------------------------
+-- V4: Vista materializada que resume botellas vendidas e ingresos por vino (optimiza consultas masivas sobre 500k+ registros mediante refresco concurrente).
 CREATE MATERIALIZED VIEW mv_ventas_por_vino AS
 SELECT v.cod_vino,
        v.nombre,

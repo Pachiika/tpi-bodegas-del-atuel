@@ -1,20 +1,10 @@
--- =============================================
--- 004_procedimientos.sql
--- Procedimientos para procesar ingresos y transferencias (RN-10 y RN-11).
--- Se ejecutan con CALL. Si algo falla en el medio, PostgreSQL deshace
--- todo lo que hizo el procedimiento (todo o nada).
---
--- SECURITY DEFINER: el procedimiento corre con los permisos del dueño de
--- las tablas. Asi la API (usuario app_rw) puede procesar un documento
--- llamando al procedimiento, pero NO puede cambiar el estado a mano con
--- un UPDATE (el trigger de estados de 005 no lo deja).
--- =============================================
+-- 004_procedimientos.sql: Lógica transaccional de procesamiento con control de privilegios mediante SECURITY DEFINER.
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
 -- Procesar un ingreso (RN-10)
 -- Suma al deposito las botellas de un ingreso terminado y lo pasa a procesado.
--- Uso: CALL sp_procesar_ingreso(15);
+
 CREATE OR REPLACE PROCEDURE sp_procesar_ingreso(codigo INTEGER)
 SECURITY DEFINER
 SET search_path = public
@@ -24,8 +14,7 @@ DECLARE
     cant_renglones INTEGER;
     r RECORD;
 BEGIN
-    -- 1) Buscar el ingreso. FOR UPDATE lo bloquea para que nadie
-    --    lo procese al mismo tiempo.
+    -- 1) Buscar el ingreso. FOR UPDATE lo bloquea para que nadie lo procese al mismo tiempo.
     SELECT estado INTO estado_actual
     FROM ingreso
     WHERE codigo_ingreso = codigo
@@ -65,8 +54,7 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- 3) Pasar a procesado. La "marca" bodega.procesando le avisa al
-    --    trigger de estados que el cambio viene de este procedimiento.
+    -- 3) Pasar a procesado. La "marca" bodega.procesando le avisa al trigger de estados que el cambio viene de este procedimiento.
     PERFORM set_config('bodega.procesando', 'si', true);
     UPDATE ingreso SET estado = 'procesado' WHERE codigo_ingreso = codigo;
     PERFORM set_config('bodega.procesando', 'no', true);
@@ -74,11 +62,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Procesar una transferencia (RN-11)
--- Resta del deposito y suma a la sala las botellas de una transferencia
--- terminada, y la pasa a procesado. Si en el deposito no alcanza para algun
--- vino, no se cambia nada.
--- Uso: CALL sp_procesar_transferencia(1234);
+-- RN-11: Procesa transferencia de stock garantizando disponibilidad atómica entre depósito y sala.
 CREATE OR REPLACE PROCEDURE sp_procesar_transferencia(numero INTEGER)
 SECURITY DEFINER
 SET search_path = public
@@ -113,8 +97,7 @@ BEGIN
         RAISE EXCEPTION 'La transferencia % no tiene renglones (RN-11)', numero;
     END IF;
 
-    -- 2) Primero revisar que haya stock en el deposito para TODOS los vinos.
-    --    FOR UPDATE bloquea la fila de stock hasta que termine el procedimiento.
+    -- 2) Verifica stock total disponible aplicando bloqueo exclusivo (FOR UPDATE).
     FOR r IN SELECT cod_vino, cantidad
              FROM renglon_transferencia
              WHERE nro_transferencia = numero

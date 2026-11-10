@@ -1,20 +1,4 @@
--- =====================================================================
--- db/tests/db_tests.sql  ·  Bodegas del Atuel
--- Batería de pruebas de las reglas de negocio RN-01 a RN-15.
---
--- Cómo correrlo (sobre una base con las migraciones aplicadas, con o
--- sin la carga masiva):
---     psql -d bodegas -f db/tests/db_tests.sql
---
--- * Todo corre dentro de una transacción que termina en ROLLBACK: la base
---   queda igual que antes.
--- * pg_temp.debe_fallar(sql, regla, fragmento) ejecuta la sentencia en
---   una subtransacción y verifica que FALLE con un mensaje que contenga
---   el fragmento esperado. pg_temp.debe_funcionar(sql, regla) verifica que
---   NO falle.
--- * Al final se imprime un resumen. Si alguna prueba no da el resultado
---   esperado, el script termina con ERROR.
--- =====================================================================
+-- db/tests/db_tests.sql: Batería de pruebas automatizadas para las reglas de negocio RN-01 a RN-15; ejecuta aserciones de éxito y fallo dentro de una transacción aislada con ROLLBACK y reporte final.
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 \set ON_ERROR_STOP on
 \echo '=== Pruebas de reglas de negocio - Bodegas del Atuel ==='

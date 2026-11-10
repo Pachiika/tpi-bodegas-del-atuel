@@ -1,9 +1,4 @@
--- =====================================================================
--- db/seed/control.sql · Consultas de control de la carga masiva
--- Cada fila es una verificación y la cantidad de problemas encontrados.
--- Todas deben dar 0. (Se ejecuta automáticamente al final de seed.py.)
---     psql -d bodegas -f db/seed/control.sql
--- =====================================================================
+-- db/seed/control.sql: Suite de consultas de control y validación posterior a la carga masiva (cada verificación debe retornar 0 errores de integridad).
 SELECT 'Stock de sala negativo' AS verificacion,
        count(*)::int AS problemas
   FROM stock_sala WHERE cantidad < 0

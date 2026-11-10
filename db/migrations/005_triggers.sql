@@ -1,33 +1,20 @@
--- =============================================
--- 005_triggers.sql
--- Triggers: se ejecutan solos cuando se inserta, modifica o borra.
--- Cada uno tiene primero su funcion (RETURNS trigger) y despues el
--- CREATE TRIGGER que la conecta con la tabla.
---
--- Recordatorio:
---   NEW = la fila nueva (en INSERT y UPDATE)
---   OLD = la fila vieja (en UPDATE y DELETE)
---   BEFORE: corre antes de guardar, puede cambiar NEW o cancelar con un error
---   AFTER:  corre despues de guardar
--- =============================================
+-- 005_triggers.sql: Funciones y triggers automáticos para reglas de negocio y auditorías (eventos BEFORE/AFTER con control de NEW/OLD).
 SET client_encoding = 'UTF8';   -- los archivos estan en UTF-8 (acentos bien tambien en Windows)
 
 
--- ---------------------------------------------
+
 -- 1) Descuento del cliente segun su tipo (RN-06)
 -- BEFORE INSERT/UPDATE en cliente
--- ---------------------------------------------
+
 CREATE OR REPLACE FUNCTION fn_trg_cliente_descuento()
 RETURNS trigger
 AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        -- si no mandaron descuento, se pone el de su tipo
         IF NEW.descuento IS NULL THEN
             NEW.descuento := fn_descuento_por_tipo(NEW.tipo_cliente);
         END IF;
     ELSE
-        -- si le cambian el tipo, se le pone el descuento del tipo nuevo
         IF NEW.tipo_cliente <> OLD.tipo_cliente THEN
             NEW.descuento := fn_descuento_por_tipo(NEW.tipo_cliente);
         END IF;
@@ -42,12 +29,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_cliente_descuento();
 
 
--- ---------------------------------------------
--- 2) Antes de vender: controlar stock y calcular el renglon (RN-08 y RN-09)
--- BEFORE INSERT en renglon_comprobante
--- El precio, el descuento y el subtotal no se cargan a mano: los pone
--- este trigger.
--- ---------------------------------------------
+-- RN-08/RN-09: Valida stock y calcula automáticamente precio, descuento y subtotal antes de insertar un renglón de venta (BEFORE INSERT).
 CREATE OR REPLACE FUNCTION fn_trg_rc_validar_y_calcular()
 RETURNS trigger
 AS $$
@@ -56,7 +38,7 @@ DECLARE
     cliente_venta INTEGER;
     stock_actual INTEGER;
 BEGIN
-    -- de que sala y de que cliente es el comprobante
+    
     SELECT id_sala, id_cliente INTO sala, cliente_venta
     FROM comprobante
     WHERE nro_comprobante = NEW.nro_comprobante;
@@ -65,9 +47,7 @@ BEGIN
         RAISE EXCEPTION 'El comprobante % no existe', NEW.nro_comprobante;
     END IF;
 
-    -- stock del vino en esa sala.
-    -- FOR UPDATE bloquea la fila: si dos personas compran la ultima botella
-    -- al mismo tiempo, la segunda espera a que termine la primera.
+   
     SELECT cantidad INTO stock_actual
     FROM stock_sala
     WHERE id_sala = sala AND cod_vino = NEW.cod_vino
@@ -105,10 +85,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_rc_validar_y_calcular();
 
 
--- ---------------------------------------------
--- 3) Despues de vender: descontar el stock de la sala (RN-09)
--- AFTER INSERT en renglon_comprobante
--- ---------------------------------------------
+-- RN-09: Descuenta automáticamente el stock de la sala tras confirmar la venta (AFTER INSERT en renglon_comprobante).
 CREATE OR REPLACE FUNCTION fn_trg_rc_descontar_stock()
 RETURNS trigger
 AS $$
@@ -133,12 +110,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_rc_descontar_stock();
 
 
--- ---------------------------------------------
--- 4) Un renglon ya vendido no se puede cambiar (RN-08)
--- BEFORE UPDATE en renglon_comprobante
--- Solo se deja cambiar el descuento (lo usa la consulta U1) y el
--- subtotal se vuelve a calcular.
--- ---------------------------------------------
+-- RN-08: Restringe modificaciones en renglones ya vendidos (BEFORE UPDATE en renglon_comprobante; solo permite actualizar el descuento y recalcula el subtotal).
 CREATE OR REPLACE FUNCTION fn_trg_rc_proteger()
 RETURNS trigger
 AS $$
@@ -161,15 +133,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_rc_proteger();
 
 
--- ---------------------------------------------
--- 5) Recalcular el total de los comprobantes que cambiaron (RN-08)
--- AFTER ... FOR EACH STATEMENT (una vez por sentencia, no por fila)
--- "renglones_nuevos" y "renglones_viejos" son tablas que arma PostgreSQL
--- con todas las filas que toco la sentencia. Asi, si un UPDATE cambia
--- 1000 renglones del mismo comprobante, el total se recalcula una sola vez.
--- (El UPDATE "total = total" no cambia nada: solo hace que se dispare el
--- trigger 6, que es el que calcula los importes.)
--- ---------------------------------------------
+-- RN-08: Recalcula los totales de los comprobantes afectados una vez por sentencia (AFTER STATEMENT con tablas de transición OLD/NEW TABLE para optimizar lotes).
 CREATE OR REPLACE FUNCTION fn_trg_rc_totales()
 RETURNS trigger
 AS $$
@@ -204,11 +168,7 @@ FOR EACH STATEMENT
 EXECUTE FUNCTION fn_trg_rc_totales();
 
 
--- ---------------------------------------------
--- 6) Los importes del comprobante los calcula la base (RN-08)
--- BEFORE INSERT/UPDATE en comprobante
--- Aunque alguien mande otro total, se pisa con el calculado.
--- ---------------------------------------------
+-- RN-08: Calcula y asegura automáticamente los importes del comprobante antes de insertar o actualizar (sobrescribe cualquier valor externo).
 CREATE OR REPLACE FUNCTION fn_trg_comprobante_importes()
 RETURNS trigger
 AS $$
@@ -226,11 +186,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_comprobante_importes();
 
 
--- ---------------------------------------------
--- 7) Estados del ingreso (RN-10)
--- BEFORE INSERT/UPDATE en ingreso
--- Solo se puede ir: en_confeccion -> terminado -> procesado
--- ---------------------------------------------
+-- RN-10: Valida la máquina de estados del ingreso antes de insertar o actualizar (permite únicamente la transición: en_confeccion -> terminado -> procesado).
 CREATE OR REPLACE FUNCTION fn_trg_estado_ingreso()
 RETURNS trigger
 AS $$
@@ -285,10 +241,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_estado_ingreso();
 
 
--- ---------------------------------------------
--- 8) Estados de la transferencia (RN-11)
--- Igual que el anterior pero para transferencia.
--- ---------------------------------------------
+-- RN-11: Controla las transiciones de estado permitidas en las transferencias.
 CREATE OR REPLACE FUNCTION fn_trg_estado_transferencia()
 RETURNS trigger
 AS $$
@@ -337,11 +290,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_estado_transferencia();
 
 
--- ---------------------------------------------
--- 9) La fecha de la transferencia es la actual y no se cambia (RN-11)
--- BEFORE INSERT/UPDATE en transferencia
--- (Esto no se puede hacer con un CHECK porque depende de la fecha de hoy)
--- ---------------------------------------------
+-- RN-11: Asigna automáticamente la fecha actual al insertar y bloquea cambios posteriores en actualizaciones (validación temporal gestionada por trigger).
 CREATE OR REPLACE FUNCTION fn_trg_transferencia_fecha()
 RETURNS trigger
 AS $$
@@ -362,10 +311,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_transferencia_fecha();
 
 
--- ---------------------------------------------
--- 10) Renglones de ingreso: solo se tocan si el ingreso esta en confeccion (RN-12)
--- BEFORE INSERT/UPDATE/DELETE en renglon_ingreso
--- ---------------------------------------------
+-- RN-12: Restringe inserciones, modificaciones y borrados en renglones de ingreso exclusivamente cuando el ingreso está en estado 'en_confeccion'.
 CREATE OR REPLACE FUNCTION fn_trg_bloqueo_renglon_ingreso()
 RETURNS trigger
 AS $$
@@ -410,9 +356,9 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_bloqueo_renglon_ingreso();
 
 
--- ---------------------------------------------
+
 -- 11) Lo mismo para los renglones de transferencia (RN-12)
--- ---------------------------------------------
+
 CREATE OR REPLACE FUNCTION fn_trg_bloqueo_renglon_transferencia()
 RETURNS trigger
 AS $$
@@ -455,14 +401,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_bloqueo_renglon_transferencia();
 
 
--- ---------------------------------------------
--- 12) Auditoria de cambios de precio (RN-13)
--- AFTER UPDATE OF precio en vino. Solo si el precio cambio (WHEN).
--- SECURITY DEFINER: la funcion escribe en la auditoria con los permisos
--- del dueño. Asi la API no necesita permiso para escribir en esa tabla
--- y no puede inventar registros falsos.
--- session_user = el usuario que se conecto a la base.
--- ---------------------------------------------
+-- RN-13: Auditoría de cambios de precio en vinos (AFTER UPDATE condicional con SECURITY DEFINER para un registro seguro e independiente).
 CREATE OR REPLACE FUNCTION fn_trg_vino_auditoria_precio()
 RETURNS trigger
 SECURITY DEFINER
@@ -482,12 +421,7 @@ WHEN (OLD.precio <> NEW.precio)
 EXECUTE FUNCTION fn_trg_vino_auditoria_precio();
 
 
--- ---------------------------------------------
--- 13) Solo los exportadores pueden tener permisos de exportacion (RN-07)
--- BEFORE INSERT/UPDATE en permiso_exportacion
--- (Como los clientes estan en una sola tabla, la clave foranea no alcanza:
--- hay que revisar el tipo del cliente.)
--- ---------------------------------------------
+-- RN-07: Trigger BEFORE INSERT/UPDATE: restringe permisos de exportación exclusivamente a clientes con rol de exportador.
 CREATE OR REPLACE FUNCTION fn_trg_permiso_solo_exportador()
 RETURNS trigger
 AS $$
@@ -512,14 +446,7 @@ FOR EACH ROW
 EXECUTE FUNCTION fn_trg_permiso_solo_exportador();
 
 
--- ---------------------------------------------
--- 14) El corte de cepas tiene que sumar 100% (RN-05)
--- CONSTRAINT TRIGGER ... DEFERRABLE INITIALLY DEFERRED:
--- no se controla en cada INSERT sino al final, cuando se hace COMMIT.
--- Hace falta porque las cepas se cargan de a una: despues de la primera
--- la suma da 85, despues de la segunda da 100. Recien al final tiene
--- que dar 100.
--- ---------------------------------------------
+-- RN-05: Valida que la suma de los porcentajes de cepas alcance exactamente el 100% al finalizar la transacción (Constraint Trigger deferible para permitir cargas secuenciales).
 CREATE OR REPLACE FUNCTION fn_trg_validar_composicion()
 RETURNS trigger
 AS $$

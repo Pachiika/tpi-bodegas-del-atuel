@@ -1,21 +1,5 @@
 SET client_encoding = 'UTF8';
--- =============================================
--- update.sql - Consultas U1 a U6
---
--- Cada consulta esta entre BEGIN y ROLLBACK: se ve como quedan los
--- datos antes y despues del UPDATE, pero al final se deshace todo y la
--- base queda igual. (Para guardar de verdad, cambiar ROLLBACK por COMMIT.)
--- =============================================
-
-
--- U1. Recalcular el total de todos los comprobantes aplicando el
--- descuento que corresponde al tipo de cliente.
--- El descuento de cada cliente esta en cliente.descuento. Actualizamos
--- los renglones que tienen otro descuento y los triggers recalculan
--- el subtotal del renglon y el total del comprobante.
--- Con los datos recien cargados todos coinciden, asi que primero
--- cambiamos el descuento de algunos exportadores (como en U6) para
--- que haya algo que recalcular.
+-- U1: Recalcula totales de comprobantes según el descuento del cliente (triggers actualizan subtotales; modifica datos de prueba para forzar cambios).
 BEGIN;
 
 UPDATE cliente
@@ -51,8 +35,7 @@ WHERE total <> fn_total_comprobante(nro_comprobante);
 ROLLBACK;
 
 
--- U2. Aumentar un 20 % el salario de los empleados con mas de 5 años
--- de antiguedad (fn_antiguedad_anios cuenta los años desde el ingreso).
+-- U2: Incrementa 20% el sueldo al personal con más de 5 años en la empresa.
 BEGIN;
 
 SELECT COUNT(*) AS empleados, SUM(salario) AS total_salarios_antes
@@ -70,8 +53,7 @@ WHERE fn_antiguedad_anios(fecha_ingreso) > 5;
 ROLLBACK;
 
 
--- U3. Incrementar un 13 % el precio de los vinos de "Bodega Atuel Viejo S.A.".
--- Cada cambio de precio queda registrado en auditoria_precio (trigger RN-13).
+-- U3: Aumenta 13% precios de Bodega Atuel Viejo (registrado en auditoría_precio).
 BEGIN;
 
 SELECT COUNT(*) AS vinos, ROUND(AVG(precio), 2) AS precio_promedio_antes,
@@ -91,9 +73,7 @@ WHERE cuit_bodega = (SELECT cuit FROM bodega WHERE razon_social = 'Bodega Atuel 
 ROLLBACK;
 
 
--- U4. En las salas que cierran el lunes pasar el cierre al miercoles y
--- al reves, en una sola sentencia. El CASE usa el valor que tenia cada
--- fila antes del cambio, por eso no se mezclan.
+-- U4: Intercambia los días de cierre entre lunes y miércoles para las salas (en una sola sentencia usando CASE).
 BEGIN;
 
 SELECT dia_cierre, COUNT(*) AS salas
@@ -116,8 +96,7 @@ GROUP BY dia_cierre;
 ROLLBACK;
 
 
--- U5. Aplicar un 15 % de descuento de precio a los 10 vinos menos
--- vendidos. LEFT JOIN para que un vino que nunca se vendio cuente 0.
+-- U5: Rebaja 15% el precio del top 10 de vinos con menor venta (admite ceros vía LEFT JOIN).
 BEGIN;
 
 -- Los 10 vinos menos vendidos
@@ -147,8 +126,7 @@ ORDER BY cod_vino;
 ROLLBACK;
 
 
--- U6. A los exportadores con mas de 3 permisos de exportacion subirles
--- el descuento al 35 %.
+-- U6. A los exportadores con mas de 3 permisos de exportacion subirles el descuento al 35 %.
 BEGIN;
 
 SELECT descuento, COUNT(*) AS exportadores

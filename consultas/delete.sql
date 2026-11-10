@@ -1,17 +1,5 @@
 SET client_encoding = 'UTF8';
--- =============================================
--- delete.sql - Consultas D1 a D6
---
--- Cada consulta esta entre BEGIN y ROLLBACK: se ve cuantas filas
--- habia antes y cuantas quedan despues, pero al final se deshace
--- todo y la base queda igual. (Para borrar de verdad, cambiar
--- ROLLBACK por COMMIT.)
--- =============================================
-
-
--- D1. Borrar los comprobantes de mas de 5 años de clientes socios.
--- Los renglones se borran solos (ON DELETE CASCADE).
-BEGIN;
+-- D1: Elimina comprobantes de socios con más de 5 años (renglones en cascada).
 
 SELECT COUNT(*) AS comprobantes_antes
 FROM comprobante
@@ -30,9 +18,7 @@ WHERE fecha < CURRENT_DATE - INTERVAL '5 years'
 ROLLBACK;
 
 
--- D2. Eliminar las cepas que no estan en ningun vino ni en ninguna parcela.
--- En los datos todas las cepas se usan, asi que primero agregamos
--- una cepa sin uso para ver que se borre.
+-- D2: Borra cepas sin uso en vinos o parcelas (inserta una de prueba previamente).
 BEGIN;
 
 INSERT INTO cepa (nombre, tipo) VALUES ('Cepa de prueba sin uso', 'blanca');
@@ -54,8 +40,7 @@ WHERE NOT EXISTS (SELECT 1 FROM composicion_vino cv WHERE cv.id_cepa = c.id_cepa
 ROLLBACK;
 
 
--- D3. Se cerro la sala de Malargüe: eliminar los empleados de esa sala
--- que trabajaron menos de 2 años.
+-- D3: Elimina empleados de la sala cerrada de Malargüe con menos de 2 años de antigüedad.
 BEGIN;
 
 SELECT e.cuit, e.nombre, e.fecha_ingreso, fn_antiguedad_anios(e.fecha_ingreso) AS anios
@@ -81,8 +66,7 @@ WHERE l.nombre = 'Malargüe';
 ROLLBACK;
 
 
--- D4. Borrar los socios que nunca compraron y se dieron de alta
--- hace mas de 5 años.
+-- D4: Elimina socios sin compras registrados hace más de 5 años.
 BEGIN;
 
 SELECT COUNT(*) AS socios_a_borrar
@@ -101,9 +85,7 @@ SELECT COUNT(*) AS clientes_que_quedan FROM cliente;
 ROLLBACK;
 
 
--- D5. Eliminar los ingresos procesados de hace mas de 365 dias.
--- Sus renglones se borran solos (ON DELETE CASCADE). El trigger de
--- renglones (RN-12) lo permite porque el ingreso ya no existe.
+-- D5: Elimina ingresos procesados de >365 días (renglones en CASCADE; permitido por trigger).
 BEGIN;
 
 SELECT COUNT(*) AS ingresos_a_borrar

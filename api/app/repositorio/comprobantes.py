@@ -1,10 +1,5 @@
-"""Ventas: el comprobante completo (cabecera y renglones) en una transacción.
+# Transacción de venta: la DB calcula totales y valida stock (rollback automático si falla).
 
-La API solo envía cliente, sala, vino y cantidad. Precio, descuento,
-subtotales, total y descuento de stock los resuelven los triggers (RN-06,
-RN-08, RN-09). Si un renglón no tiene stock, el trigger aborta y el ROLLBACK
-deshace también la cabecera: no quedan datos a medias.
-"""
 from psycopg import Connection
 
 SQL_INSERTAR_CABECERA = """

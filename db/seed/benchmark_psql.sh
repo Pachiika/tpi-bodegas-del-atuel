@@ -1,7 +1,4 @@
-#!/bin/bash
-# Compara cuatro formas de insertar 20.000 clientes usando solo psql.
-#   PSQL="psql -h localhost -U bodega_owner -d bodegas" bash db/seed/benchmark_psql.sh
-# Requiere haber generado los CSV (python db/seed/seed.py generar).
+# benchmark_psql.sh: Script de evaluación comparativa que mide el rendimiento de cuatro técnicas diferentes para la inserción masiva de 20.000 clientes utilizando psql y datos precargados en CSV.
 set -e
 cd "$(dirname "$0")"
 PSQL=${PSQL:-"psql -d bodegas"}

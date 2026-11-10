@@ -1,9 +1,4 @@
-"""Traducción centralizada de errores de PostgreSQL (SQLSTATE) a HTTP.
-
-La API no repite las reglas de negocio: deja que la base las haga cumplir y
-traduce el error que devuelve. El mensaje de la regla (RAISE EXCEPTION de un
-trigger o procedimiento) se devuelve tal cual para que el front lo muestre.
-"""
+# Mapeo centralizado de SQLSTATE de PostgreSQL a códigos HTTP.
 import logging
 
 import psycopg
@@ -13,11 +8,11 @@ from psycopg_pool import PoolTimeout
 
 log = logging.getLogger("bodegas.errores")
 
-# SQLSTATE -> (código HTTP, nombre corto)
+# SQLSTATE -> (código HTTP)
 TRADUCCION = {
     "23505": (409, "unique_violation"),
     "23503": (409, "foreign_key_violation"),
-    "23001": (409, "restrict_violation"),      # PostgreSQL 17+ en FK con ON DELETE RESTRICT
+    "23001": (409, "restrict_violation"),      
     "23514": (422, "check_violation"),
     "23502": (422, "not_null_violation"),
     "P0001": (409, "regla_de_negocio"),

@@ -1,16 +1,5 @@
 SET client_encoding = 'UTF8';
--- =============================================
--- insert.sql - Consultas I1 a I6
---
--- Cada consulta esta entre BEGIN y ROLLBACK: se ve como quedan los
--- datos despues del INSERT, pero al final se deshace todo y la base
--- queda igual. (Para guardar de verdad, cambiar ROLLBACK por COMMIT.)
--- =============================================
-
-
--- I1. Insertar en transportista_cubre_localidad una nueva cobertura que
--- vincule General Alvear con el transportista que menos envios (ingresos)
--- hizo en el ultimo trimestre.
+-- I1: Inserta cobertura General Alvear para el transportista con menos envíos trimestrales.
 BEGIN;
 
 -- Envios de cada transportista en los ultimos 3 meses.
@@ -75,11 +64,7 @@ GROUP BY m.nombre;
 ROLLBACK;
 
 
--- I3. Crear un comprobante con tres renglones para el cliente 1 en la
--- sala 1, dentro de una transaccion y usando las funciones de calculo.
--- Solo cargamos vino y cantidad: los triggers controlan el stock y
--- completan precio, descuento y subtotal (fn_descuento_cliente,
--- fn_subtotal_renglon) y despues el total del comprobante.
+-- I3: Inserta comprobante (3 renglones) para cliente 1 en sala 1; cálculos y stock automáticos por triggers.
 BEGIN;
 
 -- Tres vinos con stock en la sala 1
@@ -137,10 +122,7 @@ SELECT COUNT(*) AS salas_despues FROM sala_venta;
 ROLLBACK;
 
 
--- I6. Crear un ingreso en confeccion de 120 botellas de "Malbec Reserva"
--- de 750 ml, elaborado por "Bodega Atuel Viejo S.A." y trasladado por el
--- transportista 1. El estado (en_confeccion) y la fecha los pone el
--- DEFAULT. Todavia no suma stock: eso pasa cuando se procesa.
+-- I6: Inserta ingreso en confección (120 botellas de Malbec Reserva, transp. 1); sin impacto en stock hasta procesar.
 BEGIN;
 
 INSERT INTO ingreso (codigo_transporte, cuit_bodega)

@@ -5,14 +5,14 @@ from psycopg_pool import ConnectionPool
 
 load_dotenv()
 
-# Datos para conectarse a la base (se leen del archivo .env)
+# Conectar bd (archivo env)
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "bodegas")
 DB_USER = os.getenv("DB_USER", "app_rw")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 
-# Armamos el texto de conexion
+
 DSN = f"host={DB_HOST} port={DB_PORT} dbname={DB_NAME} user={DB_USER}"
 if DB_PASSWORD != "":
     DSN = DSN + f" password={DB_PASSWORD}"
@@ -27,7 +27,7 @@ pool = ConnectionPool(
 )
 
 
-# Cada endpoint pide una conexion prestada y despues la devuelve
+# Gestión de conexión por petición.
 def get_db_connection():
     with pool.connection() as conn:
         yield conn

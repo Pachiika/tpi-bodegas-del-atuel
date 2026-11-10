@@ -1,6 +1,4 @@
-"""Modelos de entrada (pydantic). Solo validan forma y tipos de datos:
-las reglas de negocio (precio > 0, porcentajes que suman 100, stock, etc.)
-las hace cumplir la base, y la API traduce el error que devuelve."""
+# Esquemas Pydantic (solo tipos y forma; la lógica va en la DB).
 from decimal import Decimal
 from typing import Any, Optional
 
